@@ -4,7 +4,20 @@
 
 namespace
 {
-
+	char keyboardKeyChar(sf::Keyboard::Key k, bool capital)
+	{
+		switch (k)
+		{
+#define KEY(KC,kc) case sf::Keyboard::KC: return capital ? 'KC' : 'kc'
+			KEY(A,a); KEY(B,b); KEY(C,c); KEY(D,d); KEY(E,e); KEY(F,f); KEY(G,g);
+			KEY(H,h); KEY(I,i); KEY(J,j); KEY(K,k); KEY(L,l); KEY(M,m); KEY(N,n);
+			KEY(O,o); KEY(P,p); KEY(Q,q); KEY(R,r); KEY(S,s); KEY(T,t); KEY(U,u);
+			KEY(V,v); KEY(W,w); KEY(X,x); KEY(Y,y); KEY(Z,z);
+#undef KEY
+		default:
+			return '?';
+		}
+	}
 }
 
 void as::priv::RegKeyboard(asIScriptEngine* eng)
@@ -27,6 +40,7 @@ void as::priv::RegKeyboard(asIScriptEngine* eng)
 #undef K
 
 	AS_ASSERT(eng->RegisterGlobalFunction("bool IsPressed(Key)", asFUNCTION(sf::Keyboard::isKeyPressed), asCALL_CDECL));
+	AS_ASSERT(eng->RegisterGlobalFunction("char Char(Key,bool=false)", asFUNCTION(keyboardKeyChar), asCALL_CDECL));
 
 #if SFML_VERSION_MINOR > 1
 	AS_ASSERT(eng->RegisterGlobalFunction("void ShowVirtual(bool)", asFUNCTION(sf::Keyboard::setVirtualKeyboardVisible), asCALL_CDECL));
