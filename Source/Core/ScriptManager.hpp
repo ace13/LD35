@@ -176,7 +176,7 @@ private:
 		asILockableSharedBool* WeakRef;
 	};
 	
-	bool mSerialize;
+	bool mReloading, mSerialize;
 	std::list<std::string> mDefines;
 	std::unordered_map<asIScriptObject*, ChangeNotice> mChangeNotice;
 	std::list<std::pair<std::string, ScriptExtensionFun>> mExtensions;

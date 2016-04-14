@@ -78,6 +78,7 @@ size_t ScriptManager::BytecodeStore::getSize() const
 
 ScriptManager::ScriptManager()
 	: mEngine(nullptr)
+	, mReloading(false)
 	, mSerialize(true)
 {
 
@@ -105,6 +106,8 @@ void ScriptManager::init()
 	asIScriptEngine* eng = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	eng->SetUserData(this, 0x4547);
 	eng->SetMessageCallback(asFUNCTION(error), this, asCALL_CDECL_OBJFIRST);
+
+	eng->RegisterGlobalProperty("const bool RELOADING", &mReloading);
 
 #ifndef NDEBUG
 	std::unordered_map<std::string, uint32_t> counts;
@@ -268,6 +271,8 @@ bool ScriptManager::loadFromStream(const std::string& name, asIBinaryStream& str
 
 	if (reload && module && mSerialize)
 	{
+		mReloading = true;
+
 		for (auto& reg : mSerializers)
 			serial.AddUserType(reg.second(), reg.first);
 
@@ -304,7 +309,7 @@ bool ScriptManager::loadFromStream(const std::string& name, asIBinaryStream& str
 	if (r < 0)
 	{
 		module->Discard();
-
+		mReloading = false;
 		return false;
 	}
 
@@ -333,6 +338,8 @@ bool ScriptManager::loadFromStream(const std::string& name, asIBinaryStream& str
 
 		module->SetUserData((void*)1, Data_Reloaded);
 		mEngine->GarbageCollect(asGC_FULL_CYCLE);
+
+		mReloading = false;
 	}
 	else
 		module->SetUserData((void*)0, Data_Reloaded);

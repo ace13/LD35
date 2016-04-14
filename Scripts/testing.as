@@ -9,7 +9,7 @@ void OnLoad()
 void OnReload()
 {
 	println("Reloaded.");
-	t.reloaded();
+	t.OnReload();
 }
 
 class Clock
@@ -42,11 +42,10 @@ class Clock
 		Hooks::Remove("DrawUI");
 		Hooks::Remove("Update");
 #endif
-
 		println("Destroyed clock.");
 	}
 
-	void reloaded()
+	void OnReload()
 	{
 		Hooks::Add("Tick", "tick");
 
@@ -119,7 +118,7 @@ class Clock
 		sf::View v = rend.View;
 
 		v.Zoom(1 + sin(time * 2) / 100);
-		v.Rotate(cos(time*2) *5);
+//		v.Rotate(cos(time*2) *5);
 		v.Center = -sf::Vec2(cos(time), sin(time)) * 5;
 
 		rend.View = v;
