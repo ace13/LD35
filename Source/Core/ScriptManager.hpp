@@ -37,6 +37,28 @@ namespace sf { class InputStream; }
 class ScriptManager
 {
 public:
+	enum ScriptData
+	{
+		Data_Reloaded = 0x73456
+	};
+
+	class BytecodeStore : public asIBinaryStream
+	{
+	public:
+		BytecodeStore();
+		BytecodeStore(const char* data, size_t len);
+
+		void Read(void *ptr, asUINT size);
+		void Write(const void *ptr, asUINT size);
+
+		const char* getData() const;
+		size_t getSize() const;
+
+	private:
+		std::vector<char> mStore;
+		size_t mTellg;
+	};
+
 	template<typename T>
 	class CSimpleType : public CUserType
 	{
@@ -88,6 +110,7 @@ public:
 	bool loadFromFile(const std::string& file, ScriptType type = Type_Autodetect);
 	bool loadFromMemory(const std::string& name, const void* data, size_t len, ScriptType type = Type_Autodetect);
 	bool loadFromStream(const std::string& name, sf::InputStream& stream, ScriptType type = Type_Autodetect);
+	bool loadFromStream(const std::string& name, asIBinaryStream& store, ScriptType type = Type_Bytecode);
 
 	void unload(const std::string& name);
 	void unloadAll();
@@ -96,6 +119,12 @@ public:
 	void addDefine(const std::string& define);
 	void removeDefine(const std::string& define);
 	void clearDefines();
+
+
+	// Script state functions
+
+	void setSerialization(bool serialize);
+	bool getSerialization() const;
 
 
 	// Utility functions
@@ -126,6 +155,9 @@ public:
 	bool addHook(const std::string& hook, asIScriptFunction* func, asIScriptObject* obj);
 	bool removeHook(const std::string& hook, asIScriptFunction* func, asIScriptObject* obj);
 
+	void addHookFromScript(const std::string& hook, const std::string& func);
+	void removeHookFromScript(const std::string& hook, const std::string& func);
+
 private:
 	struct Script
 	{
@@ -143,10 +175,8 @@ private:
 		asIScriptObject* Object;
 		asILockableSharedBool* WeakRef;
 	};
-
-	void addHookFromScript(const std::string& hook, const std::string& func);
-	void removeHookFromScript(const std::string& hook, const std::string& func);
 	
+	bool mSerialize;
 	std::list<std::string> mDefines;
 	std::unordered_map<asIScriptObject*, ChangeNotice> mChangeNotice;
 	std::list<std::pair<std::string, ScriptExtensionFun>> mExtensions;
@@ -156,6 +186,7 @@ private:
 	std::unordered_map<std::string, std::list<ScriptHook>> mScriptHooks;
 	std::unordered_map<std::string, ScriptPreLoadCallbackFun> mPreLoadCallbacks;
 	std::unordered_map<std::string, ScriptPostLoadCallbackFun> mPostLoadCallbacks;
+	CSerializer mSerializer;
 	asIScriptEngine* mEngine;
 };
 

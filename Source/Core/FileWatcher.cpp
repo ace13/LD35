@@ -466,6 +466,21 @@ bool FileWatcher::pollChange(std::string& out)
 	out = mChangeQueue.front();
 	mChangeQueue.pop_front();
 
+#ifdef SFML_SYSTEM_WINDOWS
+	if (out[0] != '.' && out.substr(1, 2) != ":\\")
+		out = ".\\" + out;
+
+	size_t off = out.find('\\');
+	while (off != std::string::npos)
+	{
+		out[off] = '/';
+		off = out.find('\\', off);
+	}
+#else
+	if (out[0] != '.' && out[0] != '/')
+		out = "./" + out;
+#endif
+
 	return true;
 }
 void FileWatcher::update()
@@ -495,10 +510,16 @@ void FileWatcher::recurseDirectory(const std::string& dir, std::list<std::string
 		{
 			if (wildcmp(wildcard.c_str(), name.c_str()))
 			{
-				if (dir == ".")
-					output.push_back(name);
-				else
-					output.push_back(dir + '\\' + name);
+				std::string finalName = dir + '\\' + name;
+
+				size_t off = finalName.find('\\');
+				while (off != std::string::npos)
+				{
+					finalName[off] = '/';
+					off = finalName.find('\\', off);
+				}
+
+				output.push_back(finalName);
 			}
 		}
 
@@ -518,10 +539,7 @@ void FileWatcher::recurseDirectory(const std::string& dir, std::list<std::string
 		{
 			if (wildcmp(wildcard.c_str(), name.c_str()))
 			{
-				if (dir == ".")
-					output.push_back(name);
-				else
-					output.push_back(dir + '/' + name);
+				output.push_back(dir + '/' + name);
 			}
 			continue;
 		}
@@ -530,7 +548,6 @@ void FileWatcher::recurseDirectory(const std::string& dir, std::list<std::string
 			continue;
 
 		std::string path = dir + '/' + name;
-
 		recurseDirectory(path, output, wildcard);
 	}
 

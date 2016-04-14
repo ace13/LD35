@@ -38,44 +38,47 @@ namespace
 		std::cerr << "\x1b[0m";
 #endif
 	}
-
-	class BytecodeStore : public asIBinaryStream
-	{
-	public:
-		BytecodeStore() : mTellg(0) { }
-		BytecodeStore(const char* data, size_t len) :
-			mTellg(0)
-		{
-			mStore.assign(data, data + len);
-		}
-
-		void Read(void *ptr, asUINT size)
-		{
-			char* data = (char*)ptr;
-
-			for (uint32_t i = 0; i < size; ++i)
-			{
-				data[i] = mStore[mTellg + i];
-			}
-
-			mTellg += size;
-		}
-		void Write(const void *ptr, asUINT size)
-		{
-			const char* data = (const char*)ptr;
-
-			for (uint32_t i = 0; i < size; ++i)
-				mStore.push_back(data[i]);
-		}
-
-	private:
-		std::vector<char> mStore;
-		size_t mTellg;
-	};
 }
 
-ScriptManager::ScriptManager() :
-	mEngine(nullptr)
+
+ScriptManager::BytecodeStore::BytecodeStore() : mTellg(0) { }
+ScriptManager::BytecodeStore::BytecodeStore(const char* data, size_t len)
+	: mTellg(0)
+{
+	mStore.assign(data, data + len);
+}
+
+void ScriptManager::BytecodeStore::Read(void *ptr, asUINT size)
+{
+	char* data = (char*)ptr;
+
+	for (uint32_t i = 0; i < size; ++i)
+	{
+		data[i] = mStore[mTellg + i];
+	}
+
+	mTellg += size;
+}
+void ScriptManager::BytecodeStore::Write(const void *ptr, asUINT size)
+{
+	const char* data = (const char*)ptr;
+
+	for (uint32_t i = 0; i < size; ++i)
+		mStore.push_back(data[i]);
+}
+const char* ScriptManager::BytecodeStore::getData() const
+{
+	return mStore.data();
+}
+size_t ScriptManager::BytecodeStore::getSize() const
+{
+	return mStore.size();
+}
+
+
+ScriptManager::ScriptManager()
+	: mEngine(nullptr)
+	, mSerialize(true)
 {
 
 }
@@ -99,15 +102,6 @@ void ScriptManager::registerSerializedType(const std::string& name, const std::f
 
 void ScriptManager::init()
 {
-	addExtension("ScriptHooks", [this](asIScriptEngine* eng) {
-		eng->SetDefaultNamespace("Hooks");
-
-		eng->RegisterGlobalFunction("void Add(const string&in, const string&in)", asMETHOD(ScriptManager, addHookFromScript), asCALL_THISCALL_ASGLOBAL, this);
-		eng->RegisterGlobalFunction("void Remove(const string&in, const string&in = \"\")", asMETHOD(ScriptManager, removeHookFromScript), asCALL_THISCALL_ASGLOBAL, this);
-
-		eng->SetDefaultNamespace("");
-	});
-
 	asIScriptEngine* eng = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	eng->SetUserData(this, 0x4547);
 	eng->SetMessageCallback(asFUNCTION(error), this, asCALL_CDECL_OBJFIRST);
@@ -195,42 +189,6 @@ bool ScriptManager::loadFromMemory(const std::string& name, const void* data, si
 			return false;
 	}
 
-	bool reload = mScripts.count(lower) > 0;
-
-	std::list<asIScriptObject*> changes;
-
-	asIScriptModule* module = mEngine->GetModule(lower.c_str(), asGM_ONLY_IF_EXISTS);
-	CSerializer serial;
-
-	if (reload && module)
-	{
-		for (auto& reg : mSerializers)
-			serial.AddUserType(reg.second(), reg.first);
-
-		for (auto it = mChangeNotice.begin(); it != mChangeNotice.end();)
-		{
-			if (it->second.WeakRef->Get())
-			{
-				it->second.WeakRef->Release();
-				it = mChangeNotice.erase(it);
-				continue;
-			}
-
-			auto* obj = it->first;
-
-			if (obj->GetObjectType()->GetModule() == module)
-			{
-				serial.AddExtraObjectToStore(obj);
-
-				changes.push_back(it->first);
-			}
-
-			++it;
-		}
-
-		serial.Store(module);
-	}
-
 	BytecodeStore bcode;
 	if (type == Type_Text)
 	{
@@ -273,24 +231,76 @@ bool ScriptManager::loadFromMemory(const std::string& name, const void* data, si
 		bcode = BytecodeStore((const char*)data, len);
 	}
 
+	return loadFromStream(name, bcode);
+}
+bool ScriptManager::loadFromStream(const std::string& name, sf::InputStream& stream, ScriptType type)
+{
+	auto len = size_t(stream.getSize());
+	std::vector<char> data(len);
+	stream.read(&data[0], len);
+
+	return loadFromMemory(name, &data[0], len, type);
+}
+bool ScriptManager::loadFromStream(const std::string& name, asIBinaryStream& stream, ScriptType type)
+{
+	std::string lower;
+	std::transform(name.begin(), name.end(), std::back_inserter(lower), ::tolower);
+
+	if (type == Type_Autodetect)
+	{
+		if (lower.substr(lower.size() - 4) == ".asb")
+			type = Type_Bytecode;
+		else if (lower.substr(lower.size() - 3) == ".as")
+			type = Type_Text;
+		else
+			return false;
+	}
+
+	if (type != Type_Bytecode)
+		return false;
+
+	bool reload = mScripts.count(lower) > 0;
+
+	std::list<asIScriptObject*> changes;
+
+	asIScriptModule* module = mEngine->GetModule(lower.c_str(), asGM_ONLY_IF_EXISTS);
+	CSerializer serial;
+
+	if (reload && module && mSerialize)
+	{
+		for (auto& reg : mSerializers)
+			serial.AddUserType(reg.second(), reg.first);
+
+		for (auto it = mChangeNotice.begin(); it != mChangeNotice.end();)
+		{
+			if (it->second.WeakRef->Get())
+			{
+				it->second.WeakRef->Release();
+				it = mChangeNotice.erase(it);
+				continue;
+			}
+
+			auto* obj = it->first;
+
+			if (obj->GetObjectType()->GetModule() == module)
+			{
+				serial.AddExtraObjectToStore(obj);
+
+				changes.push_back(it->first);
+			}
+
+			++it;
+		}
+
+		serial.Store(module);
+	}
+
 	if (module)
 		module->Discard();
 
 	module = mEngine->GetModule(lower.c_str(), asGM_ALWAYS_CREATE);
 
-	// FIXME? Preload callbacks can not act on bytecode anyway
-	/*
-	if (type == Type_Bytecode)
-		for (auto& callback : mPreLoadCallbacks)
-			if (!callback.second(module))
-			{
-				module->Discard();
-
-				return false;
-			}
-	*/
-
-	int r = module->LoadByteCode(&bcode);
+	int r = module->LoadByteCode(&stream);
 	if (r < 0)
 	{
 		module->Discard();
@@ -306,7 +316,7 @@ bool ScriptManager::loadFromMemory(const std::string& name, const void* data, si
 		mScripts[lower].DirectLoad = true;
 	}
 
-	if (reload)
+	if (reload && mSerialize)
 	{
 		serial.Restore(module);
 
@@ -321,21 +331,16 @@ bool ScriptManager::loadFromMemory(const std::string& name, const void* data, si
 			notice.Callback(newObj);
 		}
 
+		module->SetUserData((void*)1, Data_Reloaded);
 		mEngine->GarbageCollect(asGC_FULL_CYCLE);
 	}
+	else
+		module->SetUserData((void*)0, Data_Reloaded);
 
 	for (auto& callback : mPostLoadCallbacks)
 		callback.second(module);
 
 	return true;
-}
-bool ScriptManager::loadFromStream(const std::string& name, sf::InputStream& stream, ScriptType type)
-{
-	auto len = size_t(stream.getSize());
-	std::vector<char> data(len);
-	stream.read(&data[0], len);
-
-	return loadFromMemory(name, &data[0], len, type);
 }
 
 void ScriptManager::unload(const std::string& name)
@@ -414,6 +419,16 @@ void ScriptManager::removeDefine(const std::string& define)
 void ScriptManager::clearDefines()
 {
 	mDefines.clear();
+}
+
+
+void ScriptManager::setSerialization(bool serialize)
+{
+	mSerialize = serialize;
+}
+bool ScriptManager::getSerialization() const
+{
+	return mSerialize;
 }
 
 

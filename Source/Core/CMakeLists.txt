@@ -10,6 +10,7 @@ SET(HEADERS
 
 	AS_Addons/scriptarray/scriptarray.h
 	AS_Addons/scriptbuilder/scriptbuilder.h
+	AS_Addons/scripthelper/scripthelper.h
 	AS_Addons/scriptmath/scriptmath.h
 	AS_Addons/scriptstdstring/scriptstdstring.h
 	AS_Addons/serializer/serializer.h
@@ -30,6 +31,7 @@ SET(SOURCES
 
 	AS_Addons/scriptarray/scriptarray.cpp
 	AS_Addons/scriptbuilder/scriptbuilder.cpp
+	AS_Addons/scripthelper/scripthelper.cpp
 	AS_Addons/scriptmath/scriptmath.cpp
 	AS_Addons/scriptstdstring/scriptstdstring.cpp
 	AS_Addons/scriptstdstring/scriptstdstring_utils.cpp
