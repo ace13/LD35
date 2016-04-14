@@ -127,6 +127,14 @@ void ResourceManager::registerScript(ScriptManager& man)
 template<>
 bool ResourceManager::loadResource<sf::Font>(sf::Font* res, const std::string& file)
 {
+#ifdef SFML_SYSTEM_WINDOWS
+	std::string fontPath = "C:\\Windows\\Fonts\\" + file;
+	struct stat asdf;
+	if (stat(fontPath.c_str(), &asdf) >= 0)
+	{
+		return res->loadFromFile(fontPath);
+	}
+#endif
 	return res->loadFromFile(file);
 }
 template<>

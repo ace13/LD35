@@ -350,10 +350,9 @@ void ScriptManager::unload(const std::string& name)
 	{
 		auto* obj = it.first;
 
-		if (obj->GetObjectType()->GetModule() == module)
+		if (it.second.WeakRef->Get() || obj->GetObjectType()->GetModule() == module)
 		{
 			it.second.Callback(nullptr);
-
 			toRemove.push_back(it.first);
 		}
 	}
