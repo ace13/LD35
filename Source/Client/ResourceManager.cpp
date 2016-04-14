@@ -127,6 +127,9 @@ void ResourceManager::registerScript(ScriptManager& man)
 template<>
 bool ResourceManager::loadResource<sf::Font>(sf::Font* res, const std::string& file)
 {
+	if (res->loadFromFile(file))
+		return true;
+
 #ifdef SFML_SYSTEM_WINDOWS
 	std::string fontPath = "C:\\Windows\\Fonts\\" + file;
 	struct stat asdf;
@@ -134,8 +137,11 @@ bool ResourceManager::loadResource<sf::Font>(sf::Font* res, const std::string& f
 	{
 		return res->loadFromFile(fontPath);
 	}
+#else
+	puts("STUBBED! Implement font finding on Linux / OS X");
 #endif
-	return res->loadFromFile(file);
+
+	return false;
 }
 template<>
 bool ResourceManager::loadResource<sf::Texture>(sf::Texture* res, const std::string& file)

@@ -4,6 +4,7 @@
 #include <Core/ScriptManager.hpp>
 
 #include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Network/TcpSocket.hpp>
 
 class Application
 {
@@ -22,4 +23,5 @@ public:
 
 private:
 	Engine mEngine;
+	sf::TcpSocket mSocket;
 };

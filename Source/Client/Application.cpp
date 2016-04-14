@@ -2,13 +2,16 @@
 #include "ResourceManager.hpp"
 
 #include <Core/Time.hpp>
-#include <Core/FileWatcher.hpp>
+//#include <Core/FileWatcher.hpp>
 
+#include <SFML/Network/IpAddress.hpp>
+#include <SFML/Network/Packet.hpp>
 #include <SFML/Window/Event.hpp>
 #include <SFML/System/Thread.hpp>
 #include <SFML/System/Sleep.hpp>
 
 #include <Core/AS_Addons/scriptarray/scriptarray.h>
+#include <Core/AS_Addons/scripthelper/scripthelper.h>
 #include <Core/AS_Addons/scriptmath/scriptmath.h>
 #include <Core/AS_Addons/scriptstdstring/scriptstdstring.h>
 #include <Core/AS_SFML/AS_SFML.hpp>
@@ -35,36 +38,6 @@ namespace
 				val->m_children[i]->Restore(arr->At(i), arr->GetElementTypeId());
 		}
 	};
-	/*
-	struct CGridType : public CUserType
-	{
-		void Store(CSerializedValue *val, void *ptr)
-		{
-			CScriptGrid *grid = (CScriptGrid*)ptr;
-			val->SetUserData(new unsigned int(grid->GetWidth()));
-
-			for (unsigned int x = 0; x < grid->GetWidth(); ++x)
-				for (unsigned int y = 0; y < grid->GetHeight(); ++y)
-					val->m_children.push_back(new CSerializedValue(val, "", "", grid->At(x, y), grid->GetElementTypeId()));
-		}
-		void Restore(CSerializedValue *val, void *ptr)
-		{
-			CScriptGrid *grid = (CScriptGrid*)ptr;
-			unsigned int width = *(unsigned int*)val->GetUserData();
-			if (width == 0)
-				return;
-
-			grid->Resize(width, val->m_children.size() / width);
-			for (size_t i = 0; i < val->m_children.size(); ++i)
-				val->m_children[i]->Restore(grid->At(i / width, i % width), grid->GetElementTypeId());
-		}
-		void CleanupUserData(CSerializedValue *val)
-		{
-			unsigned int *buffer = (unsigned int*)val->GetUserData();
-			delete buffer;
-		}
-	};
-	*/
 
 	template<typename T>
 	void print(T in)
@@ -158,7 +131,7 @@ Application::Application()
 
 	mEngine.add<ScriptManager>();
 	mEngine.add<sf::RenderWindow>();
-	mEngine.add<FileWatcher>();
+//	mEngine.add<FileWatcher>();
 	mEngine.add<ResourceManager>();
 }
 
@@ -195,6 +168,14 @@ void Application::init()
 	Time::registerTimeTypes(man);
 	as::SFML::registerTypes(man);
 	mEngine.get<ResourceManager>().registerScript(man);
+	man.addExtension("ScriptHooks", [&](asIScriptEngine* eng) {
+		eng->SetDefaultNamespace("Hooks");
+
+		eng->RegisterGlobalFunction("void Add(const string&in, const string&in)", asMETHOD(ScriptManager, addHookFromScript), asCALL_THISCALL_ASGLOBAL, &man);
+		eng->RegisterGlobalFunction("void Remove(const string&in, const string&in = \"\")", asMETHOD(ScriptManager, removeHookFromScript), asCALL_THISCALL_ASGLOBAL, &man);
+
+		eng->SetDefaultNamespace("");
+	});
 
 	man.init();
 
@@ -207,6 +188,9 @@ void Application::init()
 	man.registerHook("DrawUI", "void f(sf::Renderer@)");
 
 	man.addPostLoadCallback("OnLoad", [](asIScriptModule* mod) {
+		if (mod->GetUserData(ScriptManager::Data_Reloaded) != (void*)0)
+			return;
+
 		auto onLoad = mod->GetFunctionByName("OnLoad");
 
 		if (onLoad)
@@ -218,7 +202,25 @@ void Application::init()
 			mod->GetEngine()->ReturnContext(ctx);
 		}
 	});
+	man.addPostLoadCallback("OnReload", [](asIScriptModule* mod) {
+		if (mod->GetUserData(ScriptManager::Data_Reloaded) != (void*)1)
+			return;
 
+		auto onReload = mod->GetFunctionByName("OnReload");
+
+		if (onReload)
+		{
+			auto ctx = mod->GetEngine()->RequestContext();
+			ctx->Prepare(onReload);
+			ctx->Execute();
+			ctx->Unprepare();
+			mod->GetEngine()->ReturnContext(ctx);
+		}
+	});
+
+	WriteConfigToFile(man.getEngine(), "ClientEngineConfig.txt");
+
+	/*
 	// Load scripts;
 	std::list<std::string> files;
 	FileWatcher::recurseDirectory(".", files, "*.as");
@@ -234,6 +236,7 @@ void Application::init()
 	auto& watch = mEngine.get<FileWatcher>();
 
 	watch.addSource(".", true);
+	*/
 
 	auto end = Clock::now();
 	std::cout << "Init took " << (end - beg) << std::endl;
@@ -243,10 +246,14 @@ void Application::run()
 {
 	std::cout << "Application started in " << Time::getRunTime() << std::endl;
 
+	mSocket.connect(sf::IpAddress::getLocalAddress(), 42035);
+	mSocket.setBlocking(false);
+
+	sf::Packet p;
 	sf::Event ev;
 	std::string modified;
 	auto& window = mEngine.get<sf::RenderWindow>();
-	auto& watch = mEngine.get<FileWatcher>();
+//	auto& watch = mEngine.get<FileWatcher>();
 	auto& man = mEngine.get<ScriptManager>();
 
 	window.create({ 800, 600 }, "LD35 Preparational Client");
@@ -272,16 +279,41 @@ void Application::run()
 		oldframe = now;
 
 		tickTime += dt;
-
+/*
 		if (watch.pollChange(modified) && man.isLoaded(modified))
 		{
 			std::cout << "Reloading " << modified << "..." << std::endl;
 			man.loadFromFile(modified);
 		}
-
+*/
 
 		// -------------
 		// Handle Events
+
+		auto ret = mSocket.receive(p);
+		if (ret == sf::Socket::Done)
+		{
+			std::string type;
+			p >> type;
+
+			if (type == "SCRIPT")
+			{
+				std::string name;
+				p >> name;
+
+				ScriptManager::BytecodeStore store;
+				do
+				{
+					uint8_t c;
+					p >> c;
+					store.Write(&c, 1);
+				} while (p);
+
+				std::cout << "Received script state for " << name << " from the server, integrating..." << std::endl;
+				if (!man.loadFromStream(name, store))
+					std::cout << "Integration of new script code failed." << std::endl;
+			}
+		}
 
 		if (window.pollEvent(ev))
 		{
