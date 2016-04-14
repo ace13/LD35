@@ -5,10 +5,13 @@
 #include <Core/ScriptManager.hpp>
 
 #include <Core/AS_Addons/scriptarray/scriptarray.h>
+#include <Core/AS_Addons/scripthelper/scripthelper.h>
 #include <Core/AS_Addons/scriptmath/scriptmath.h>
 #include <Core/AS_Addons/scriptstdstring/scriptstdstring.h>
 #include <Core/AS_SFML/AS_SFML.hpp>
 
+#include <SFML/Network/Packet.hpp>
+#include <SFML/Network/SocketSelector.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <SFML/System/Vector3.hpp>
 
@@ -16,6 +19,10 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+
+#ifdef _DEBUG
+#include <fstream>
+#endif
 
 namespace
 {
@@ -149,13 +156,28 @@ void Application::init()
 	});
 	Time::registerTimeTypes(man);
 	as::SFML::registerTypes(man);
+	man.addExtension("ScriptHooks", [&](asIScriptEngine* eng) {
+		eng->SetDefaultNamespace("Hooks");
+
+		eng->RegisterGlobalFunction("void Add(const string&in, const string&in)", asMETHOD(ScriptManager, addHookFromScript), asCALL_THISCALL_ASGLOBAL, &man);
+		eng->RegisterGlobalFunction("void Remove(const string&in, const string&in = \"\")", asMETHOD(ScriptManager, removeHookFromScript), asCALL_THISCALL_ASGLOBAL, &man);
+
+		eng->SetDefaultNamespace("");
+	});
 
 	man.init();
+	mClientSM.init();
 
 	man.addDefine("SERVER");
+	mClientSM.addDefine("CLIENT");
+	mClientSM.setSerialization(false);
+
 	man.registerHook("Tick", "void f(const Timespan&in)");
 
 	man.addPostLoadCallback("OnLoad", [](asIScriptModule* mod) {
+		if (mod->GetUserData(ScriptManager::Data_Reloaded) != (void*)0)
+			return;
+
 		auto onLoad = mod->GetFunctionByName("OnLoad");
 
 		if (onLoad)
@@ -167,6 +189,47 @@ void Application::init()
 			mod->GetEngine()->ReturnContext(ctx);
 		}
 	});
+	man.addPostLoadCallback("OnReload", [](asIScriptModule* mod) {
+		if (mod->GetUserData(ScriptManager::Data_Reloaded) != (void*)1)
+			return;
+
+		auto onReload = mod->GetFunctionByName("OnReload");
+
+		if (onReload)
+		{
+			auto ctx = mod->GetEngine()->RequestContext();
+			ctx->Prepare(onReload);
+			ctx->Execute();
+			ctx->Unprepare();
+			mod->GetEngine()->ReturnContext(ctx);
+		}
+	});
+	// Send updated script code to clients.
+	man.addPostLoadCallback("ClientTransfer", [&](asIScriptModule* mod) {
+		std::string file = mod->GetName();
+		if (mClientSM.loadFromFile(file))
+		{
+			mod = mClientSM.getEngine()->GetModule(file.c_str());
+
+			ScriptManager::BytecodeStore store;
+			mod->SaveByteCode(&store);
+			
+			sf::Packet packet;
+			packet << "SCRIPT";
+			packet << file;
+			packet.append(store.getData(), store.getSize());
+
+			mConnections.sendPacketToAll(packet);
+		}
+	});
+
+	std::ifstream config("ClientEngineConfig.txt");
+	if (config)
+		ConfigEngineFromStream(mClientSM.getEngine(), config);
+	else
+	{
+		std::cout << "No client configuration is available, this is a problem..." << std::endl;
+	}
 
 	// Load scripts;
 	std::list<std::string> files;
@@ -188,6 +251,8 @@ void Application::init()
 void Application::run()
 {
 	mRunning = true;
+
+	mSocket.listen(42035);
 
 	std::cout << "Spinning up worker thread..." << std::endl;
 	mWorkThread = std::thread(&Application::serverLoop, this);
@@ -228,6 +293,65 @@ void Application::serverLoop()
 		oldframe = now;
 
 		tickTime += dt;
+
+		auto selector = mConnections.getSelector();
+		selector.add(mSocket);
+
+		if (selector.wait(sf::microseconds(10)))
+		{
+			for (auto& client : mConnections.getClients(selector))
+			{
+				auto& sock = mConnections.getSocket(client);
+				sf::Packet packet;
+				sf::Socket::Status status = sf::Socket::Partial;
+
+				while (status == sf::Socket::Partial)
+					status = sock.receive(packet);
+
+				if (status == sf::Socket::Disconnected)
+				{
+					std::cout << "Client " << client << " (" << sock.getRemoteAddress().toString() << ":" << sock.getRemotePort() << ") disconnected." << std::endl;
+
+					mConnections.removeClient(client);
+				}
+				else
+				{
+					std::cout << client << ": " << packet.getDataSize() << "B of data received." << std::endl;
+				}
+			}
+
+			if (selector.isReady(mSocket))
+			{
+				std::unique_ptr<sf::TcpSocket> client(new sf::TcpSocket());
+				auto ret = mSocket.accept(*client);
+
+				if (ret == sf::Socket::Done)
+				{
+					std::cout << "Client " << client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " connected." << std::endl;
+
+					auto cid = mConnections.addClient(std::move(client));
+					auto count = mClientSM.getEngine()->GetModuleCount();
+					for (unsigned int i = 0; i < count; ++i)
+					{
+						auto* mod = mClientSM.getEngine()->GetModuleByIndex(i);
+
+						ScriptManager::BytecodeStore store;
+						mod->SaveByteCode(&store);
+
+						sf::Packet packet;
+						packet << "SCRIPT";
+						packet << mod->GetName();
+						packet.append(store.getData(), store.getSize());
+
+						mConnections.sendPacketTo(cid, packet);
+					}
+				}
+				else
+				{
+					std::cout << "Client " << client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " failed to connect! Error " << ret << std::endl;
+				}
+			}
+		}
 
 		if (watch.pollChange(modified) && man.isLoaded(modified))
 		{

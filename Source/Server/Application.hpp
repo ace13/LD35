@@ -1,6 +1,11 @@
 #pragma once
 
+#include "ConnectionManager.hpp"
+
 #include <Core/Engine.hpp>
+#include <Core/ScriptManager.hpp>
+
+#include <SFML/Network/TcpListener.hpp>
 
 #include <thread>
 
@@ -21,6 +26,11 @@ private:
 	void serverLoop();
 
 	Engine mEngine;
+	ConnectionManager mConnections;
+	ScriptManager mClientSM;
+
+	sf::TcpListener mSocket;
+
 	std::thread mWorkThread;
 	bool mRunning;
 };

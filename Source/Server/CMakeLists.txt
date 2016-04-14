@@ -1,9 +1,11 @@
 SET(HEADERS
 	Application.hpp
+	ConnectionManager.hpp
 )
 
 SET(SOURCES
 	Application.cpp
+	ConnectionManager.cpp
 
 	main.cpp
 )
