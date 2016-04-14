@@ -2,7 +2,14 @@ Clock@ t;
 
 void OnLoad()
 {
+	println("Loaded.");
 	@t = Clock();
+}
+
+void OnReload()
+{
+	println("Reloaded.");
+	t.reloaded();
 }
 
 class Clock
@@ -23,6 +30,8 @@ class Clock
 		updates = 0;
 		target = Time::At(2016,04,16, 03,00,00);
 		nextReport = Time::Now + Time::Seconds(1);
+
+		println("Created clock.");
 	}
 
 	~Clock()
@@ -32,6 +41,18 @@ class Clock
 #if CLIENT
 		Hooks::Remove("DrawUI");
 		Hooks::Remove("Update");
+#endif
+
+		println("Destroyed clock.");
+	}
+
+	void reloaded()
+	{
+		Hooks::Add("Tick", "tick");
+
+#if CLIENT
+		Hooks::Add("Update", "update");
+		Hooks::Add("DrawUI", "draw");
 #endif
 	}
 
@@ -63,13 +84,15 @@ class Clock
 		{
 			print("Time stats: ");
 #if CLIENT
-			print(frames + "FPS ");
+			print(time);
+			print("s ");
+			print((frames/2) + "FPS ");
 			frames = 0;
 #endif
-			println(updates + "UPS");
+			println((updates/2) + "UPS");
 			updates = 0;
 
-			nextReport = Time::Now + Time::Seconds(1);
+			nextReport = Time::Now + Time::Seconds(2);
 		}
 	}
 
@@ -96,7 +119,7 @@ class Clock
 		sf::View v = rend.View;
 
 		v.Zoom(1 + sin(time * 2) / 100);
-		//v.Rotate(cos(time*2) *5);
+		v.Rotate(cos(time*2) *5);
 		v.Center = -sf::Vec2(cos(time), sin(time)) * 5;
 
 		rend.View = v;
