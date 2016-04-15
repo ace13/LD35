@@ -1,6 +1,9 @@
 #include "Application.hpp"
 #include "ResourceManager.hpp"
 #include "ServerContainer.hpp"
+#include "StateManager.hpp"
+
+#include "States/IntroState.hpp"
 
 #include <Core/Time.hpp>
 //#include <Core/FileWatcher.hpp>
@@ -135,6 +138,7 @@ Application::Application()
 //	mEngine.add<FileWatcher>();
 	mEngine.add<ResourceManager>();
 	mEngine.add<ServerContainer>();
+	mEngine.add<StateManager>();
 }
 
 Application::~Application()
@@ -264,6 +268,8 @@ void Application::run()
 	auto& window = mEngine.get<sf::RenderWindow>();
 //	auto& watch = mEngine.get<FileWatcher>();
 	auto& man = mEngine.get<ScriptManager>();
+	auto& state = mEngine.get<StateManager>();
+	state.pushState(new States::IntroState());
 
 	window.create({ 800, 600 }, "LD35 Preparational Client");
 	sf::View uiView = window.getDefaultView(), gameView({}, { 0, 2500 });
@@ -383,12 +389,14 @@ void Application::run()
 		while (tickTime >= tickLength)
 		{
 			// Run fixed updates
+			state.tick(tickLength);
 			man.runHook<const Timespan&>("Tick", tickLength);
 
 			tickTime -= tickLength;
 		}
 
 		// Run per-frame updates
+		state.update(dt);
 		man.runHook<const Timespan&>("Update", dt);
 
 
@@ -399,11 +407,13 @@ void Application::run()
 
 		// Draw things
 		window.setView(gameView);
+		state.draw(window);
 		man.runHook<sf::RenderTarget*>("Draw", &window);
 		gameView = window.getView();
 
 		// Draw UI things
 		window.setView(uiView);
+		state.drawUI(window);
 		man.runHook<sf::RenderTarget*>("DrawUI", &window);
 
 		window.display();
