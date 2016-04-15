@@ -23,8 +23,8 @@ public:
 	Client addClient(std::unique_ptr<sf::TcpSocket>&& socket);
 	void removeClient(Client cid);
 		
-	void sendPacketToAll(const sf::Packet& packet);
 	void sendPacketTo(Client cid, const sf::Packet& packet);
+	void sendPacketToAll(const sf::Packet& packet);
 	void sendPacketToAllBut(Client cid, const sf::Packet& packet);
 	sf::TcpSocket& getSocket(Client cid);
 

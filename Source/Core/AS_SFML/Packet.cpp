@@ -4,6 +4,19 @@
 
 namespace
 {
+	void createPacket(void* mem)
+	{
+		new (mem) sf::Packet();
+	}
+	void copyCreatePacket(const sf::Packet& copy, void* mem)
+	{
+		new (mem) sf::Packet(copy);
+	}
+	void destructPacket(sf::Packet* mem)
+	{
+		mem->~Packet();
+	}
+
 	bool opImplConvPacket(const sf::Packet& p)
 	{
 		return p;
@@ -14,7 +27,12 @@ void as::priv::RegPacket(asIScriptEngine* eng)
 {
 	AS_ASSERT(eng->SetDefaultNamespace("sf"));
 
-	AS_ASSERT(eng->RegisterObjectType("Packet", 0, asOBJ_REF | asOBJ_NOCOUNT));
+	AS_ASSERT(eng->RegisterObjectType("Packet", sizeof(sf::Packet), asOBJ_VALUE | asGetTypeTraits<sf::Packet>()));
+	AS_ASSERT(eng->RegisterObjectBehaviour("Packet", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(createPacket), asCALL_CDECL_OBJLAST));
+	AS_ASSERT(eng->RegisterObjectBehaviour("Packet", asBEHAVE_CONSTRUCT, "void f(const Packet&in)", asFUNCTION(copyCreatePacket), asCALL_CDECL_OBJLAST));
+	AS_ASSERT(eng->RegisterObjectBehaviour("Packet", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(destructPacket), asCALL_CDECL_OBJLAST));
+
+	AS_ASSERT(eng->RegisterObjectMethod("Packet", "Packet& opAssign(const Packet&in)", asMETHOD(sf::Packet, operator=), asCALL_THISCALL));
 
 	AS_ASSERT(eng->RegisterObjectMethod("Packet", "bool opImplConv() const", asFUNCTION(opImplConvPacket), asCALL_CDECL_OBJLAST));
 	AS_ASSERT(eng->RegisterObjectMethod("Packet", "bool get_AtEnd() const", asMETHOD(sf::Packet, endOfPacket), asCALL_THISCALL));

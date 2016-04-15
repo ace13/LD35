@@ -167,6 +167,9 @@ bool ScriptManager::loadFromFile(const std::string& file, ScriptType type)
 	size_t len = size_t(ifs.tellg());
 	ifs.seekg(0, std::ios::beg);
 
+	if (len == 0)
+		return false;
+
 	std::vector<char> data(len);
 	ifs.read(&data[0], len);
 

@@ -123,10 +123,45 @@ namespace
 	}
 }
 
+Application::ServerProperty::ServerProperty()
+	: Type(Type_Invalid)
+	, Bool(false)
+{
+
+}
+Application::ServerProperty::ServerProperty(bool b)
+	: Type(Type_Bool)
+	, Bool(b)
+{
+
+}
+Application::ServerProperty::ServerProperty(int i)
+	: Type(Type_Int)
+	, Int(i)
+{
+
+}
+Application::ServerProperty::ServerProperty(float f)
+	: Type(Type_Float)
+	, Float(f)
+{
+
+}
+
 Application::Application()
+	: mProperties {
+		{ "headless", ServerProperty(false) },
+		{ "port",     ServerProperty(42035) },
+		{ "tickrate", ServerProperty(66)    },
+		{ "local",    ServerProperty(false) }
+	}
 {
 	mEngine.add<ScriptManager>();
 	mEngine.add<FileWatcher>();
+
+	mProperties.at("local").Callback = [this]() {
+		puts("TODO: Switch interface");
+	};
 }
 
 void Application::init()
@@ -157,12 +192,21 @@ void Application::init()
 	Time::registerTimeTypes(man);
 	as::SFML::registerTypes(man);
 	man.addExtension("ScriptHooks", [&](asIScriptEngine* eng) {
-		eng->SetDefaultNamespace("Hooks");
+		AS_ASSERT(eng->SetDefaultNamespace("Hooks"));
 
-		eng->RegisterGlobalFunction("void Add(const string&in, const string&in)", asMETHOD(ScriptManager, addHookFromScript), asCALL_THISCALL_ASGLOBAL, &man);
-		eng->RegisterGlobalFunction("void Remove(const string&in, const string&in = \"\")", asMETHOD(ScriptManager, removeHookFromScript), asCALL_THISCALL_ASGLOBAL, &man);
+		AS_ASSERT(eng->RegisterGlobalFunction("void Add(const string&in, const string&in)", asMETHOD(ScriptManager, addHookFromScript), asCALL_THISCALL_ASGLOBAL, &man));
+		AS_ASSERT(eng->RegisterGlobalFunction("void Remove(const string&in, const string&in = \"\")", asMETHOD(ScriptManager, removeHookFromScript), asCALL_THISCALL_ASGLOBAL, &man));
 
-		eng->SetDefaultNamespace("");
+		AS_ASSERT(eng->SetDefaultNamespace(""));
+	});
+	man.addExtension("PacketSend", [this](asIScriptEngine* eng) {
+		AS_ASSERT(eng->SetDefaultNamespace("Net"));
+
+		AS_ASSERT(eng->RegisterGlobalFunction("void SendToAll(const sf::Packet&in)", asMETHOD(ConnectionManager, sendPacketToAll), asCALL_THISCALL_ASGLOBAL, &mConnections));
+		AS_ASSERT(eng->RegisterGlobalFunction("void SendToAllBut(int, const sf::Packet&in)", asMETHOD(ConnectionManager, sendPacketToAllBut), asCALL_THISCALL_ASGLOBAL, &mConnections));
+		AS_ASSERT(eng->RegisterGlobalFunction("void SendTo(int, const sf::Packet&in)", asMETHOD(ConnectionManager, sendPacketTo), asCALL_THISCALL_ASGLOBAL, &mConnections));
+
+		AS_ASSERT(eng->SetDefaultNamespace(""));
 	});
 
 	man.init();
@@ -252,25 +296,98 @@ void Application::run()
 {
 	mRunning = true;
 
-	mSocket.listen(42035);
+	if (mProperties["local"].Bool)
+		mSocket.listen(mProperties["port"].Int, sf::IpAddress::LocalHost);
+	else
+		mSocket.listen(mProperties["port"].Int);
 
 	std::cout << "Spinning up worker thread..." << std::endl;
 	mWorkThread = std::thread(&Application::serverLoop, this);
 
-	std::cout << "Server online." << std::endl;
-
-	do
+	if (!mProperties["headless"].Bool)
 	{
-		std::cout << "> ";
-		std::string line;
+		std::cout << "Server online." << std::endl;
 
-		std::getline(std::cin, line);
-	} while (std::cin);
+		do
+		{
+			std::cout << "> ";
+			std::string line;
 
+			std::getline(std::cin, line);
+
+			runCommand(line);
+		} while (std::cin);
+
+		mRunning = false;
+
+		if (mWorkThread.joinable())
+			mWorkThread.join();
+	}
+}
+
+void Application::stop()
+{
 	mRunning = false;
 
 	if (mWorkThread.joinable())
 		mWorkThread.join();
+}
+
+void Application::runCommand(const std::string& cmd)
+{
+
+}
+
+void Application::setBoolProp(const std::string& name, bool value)
+{
+	if (mProperties.count(name) == 0) return;
+	if (mProperties.at(name).Type != ServerProperty::Type_Bool) return;
+
+	auto& prop = mProperties.at(name);
+	prop.Bool = value;
+	if (prop.Callback)
+		prop.Callback();
+}
+void Application::setIntProp(const std::string& name, int value)
+{
+	if (mProperties.count(name) == 0) return;
+	if (mProperties.at(name).Type != ServerProperty::Type_Int) return;
+
+	auto& prop = mProperties.at(name);
+	prop.Int = value;
+	if (prop.Callback)
+		prop.Callback();
+}
+void Application::setFloatProp(const std::string& name, float value)
+{
+	if (mProperties.count(name) == 0) return;
+	if (mProperties.at(name).Type != ServerProperty::Type_Float) return;
+
+	auto& prop = mProperties.at(name);
+	prop.Float = value;
+	if (prop.Callback)
+		prop.Callback();
+}
+bool Application::getBoolProp(const std::string& name) const
+{
+	if (mProperties.count(name) == 0) return false;
+	if (mProperties.at(name).Type != ServerProperty::Type_Bool) return false;
+
+	return mProperties.at(name).Bool;
+}
+int Application::getIntProp(const std::string& name) const
+{
+	if (mProperties.count(name) == 0) return 0;
+	if (mProperties.at(name).Type != ServerProperty::Type_Int) return 0;
+
+	return mProperties.at(name).Int;
+}
+float Application::getFloatProp(const std::string& name) const
+{
+	if (mProperties.count(name) == 0) return 0.f;
+	if (mProperties.at(name).Type != ServerProperty::Type_Float) return 0.f;
+
+	return mProperties.at(name).Float;
 }
 
 void Application::serverLoop()
@@ -281,7 +398,7 @@ void Application::serverLoop()
 	auto& man = mEngine.get<ScriptManager>();
 	std::string modified;
 
-	const Timespan tickLength = std::chrono::milliseconds(15);
+	const Timespan tickLength = std::chrono::milliseconds(1000 / mProperties["tickrate"].Int);
 	Timespan tickTime(0);
 	Timestamp now = Clock::now(), nextGC = now + std::chrono::seconds(2);
 	auto oldframe = now;

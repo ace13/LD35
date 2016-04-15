@@ -1,5 +1,6 @@
 #include "Application.hpp"
 #include "ResourceManager.hpp"
+#include "ServerContainer.hpp"
 
 #include <Core/Time.hpp>
 //#include <Core/FileWatcher.hpp>
@@ -119,6 +120,8 @@ namespace
 	}
 }
 
+ServerContainer server;
+
 Application::Application()
 {
 	auto dur = Time::getClockPrecision();
@@ -141,6 +144,8 @@ Application::~Application()
 
 void Application::init()
 {
+	server.init();
+
 	auto beg = Clock::now();
 	mEngine.init();
 
