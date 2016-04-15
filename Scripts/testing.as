@@ -9,7 +9,6 @@ void OnLoad()
 void OnReload()
 {
 	println("Reloaded.");
-	t.OnReload();
 }
 
 class Clock
@@ -36,23 +35,17 @@ class Clock
 
 	~Clock()
 	{
-		Hooks::Remove("Tick", "tick");
+		if (!RELOADING)
+		{
+			Hooks::Remove("Tick", "tick");
 
 #if CLIENT
-		Hooks::Remove("DrawUI");
-		Hooks::Remove("Update");
+			Hooks::Remove("DrawUI");
+			Hooks::Remove("Update");
 #endif
+		}
+		
 		println("Destroyed clock.");
-	}
-
-	void OnReload()
-	{
-		Hooks::Add("Tick", "tick");
-
-#if CLIENT
-		Hooks::Add("Update", "update");
-		Hooks::Add("DrawUI", "draw");
-#endif
 	}
 
 	string toString(const Timespan&in span)

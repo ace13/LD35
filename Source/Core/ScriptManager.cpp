@@ -517,7 +517,7 @@ bool ScriptManager::addHook(const std::string& hook, asIScriptFunction* func, as
 	auto it = std::find_if(hooks.begin(), hooks.end(), [obj, func](ScriptHook& hook) { return hook.Function == func && hook.Object == obj; });
 	if (it == hooks.end())
 	{
-		hooks.push_back({ func, obj, obj->GetWeakRefFlag() });
+		hooks.push_back({ func->GetDeclaration(false), func, obj, obj->GetWeakRefFlag() });
 		obj->GetWeakRefFlag()->AddRef();
 	}
 
@@ -577,8 +577,6 @@ void ScriptManager::addHookFromScript(const std::string& hook, const std::string
 
 				if (it != hooks.second.end())
 				{
-					auto* decl = it->Function->GetDeclaration(false);
-
 					if (newObj)
 						newObj->GetWeakRefFlag()->AddRef();
 
@@ -588,16 +586,16 @@ void ScriptManager::addHookFromScript(const std::string& hook, const std::string
 					if (newObj)
 					{
 						it->Object = newObj;
-						it->Function = newObj->GetObjectType()->GetMethodByDecl(decl);
+						it->Function = newObj->GetObjectType()->GetMethodByDecl(it->FuncDecl.c_str());
 
 						it->WeakRef = it->Object->GetWeakRefFlag();
 
 						addChangeNotice(newObj, [=](asIScriptObject* evenNewerObj) {
-							updateChangeNotice(newObj, func, evenNewerObj);
+							updateChangeNotice(newObj, it->Function, evenNewerObj);
 						});
 					}
-
-					hooks.second.erase(it);
+					else
+						hooks.second.erase(it);
 				}
 			}
 		};

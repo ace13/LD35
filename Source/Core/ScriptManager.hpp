@@ -171,6 +171,7 @@ private:
 	};
 	struct ScriptHook
 	{
+		std::string FuncDecl;
 		asIScriptFunction* Function;
 		asIScriptObject* Object;
 		asILockableSharedBool* WeakRef;
