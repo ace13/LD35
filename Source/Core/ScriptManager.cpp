@@ -333,7 +333,9 @@ bool ScriptManager::loadFromStream(const std::string& name, asIBinaryStream& str
 			mChangeNotice.erase(it);
 
 			notice.WeakRef->Release();
-			notice.Callback(newObj);
+
+			for (auto& callback : notice.Callbacks)
+				callback.Callback(newObj);
 		}
 
 		module->SetUserData((void*)1, Data_Reloaded);
@@ -364,7 +366,9 @@ void ScriptManager::unload(const std::string& name)
 
 		if (it.second.WeakRef->Get() || obj->GetObjectType()->GetModule() == module)
 		{
-			it.second.Callback(nullptr);
+			for (auto& callback : it.second.Callbacks)
+				callback.Callback(nullptr);
+
 			toRemove.push_back(it.first);
 		}
 	}
@@ -475,12 +479,31 @@ bool ScriptManager::hasPostLoadCallback(const std::string& id) const
 }
 
 
-void ScriptManager::addChangeNotice(asIScriptObject* obj, const ScriptObjectCallbackFun& callback)
+void ScriptManager::addChangeNotice(asIScriptObject* obj, const std::string& name, const ScriptObjectCallbackFun& callback)
 {
 	if (mChangeNotice.count(obj) == 0)
 	{
-		mChangeNotice[obj] = { obj->GetWeakRefFlag(), callback };
+		mChangeNotice[obj] = { obj->GetWeakRefFlag(), { { name, callback } } };
 		obj->GetWeakRefFlag()->AddRef();
+	}
+	else
+		mChangeNotice[obj].Callbacks.push_back({ name, callback });
+}
+void ScriptManager::removeChangeNotice(asIScriptObject* obj, const std::string& name)
+{
+	if (mChangeNotice.count(obj) > 0)
+	{
+		auto& callbacks = mChangeNotice[obj].Callbacks;
+
+		auto it = std::find_if(callbacks.begin(), callbacks.end(), [name](ChangeNotice::NoticeCallback& it) { return it.Name == name; });
+		if (it != callbacks.end())
+			callbacks.erase(it);
+
+		if (callbacks.empty())
+		{
+			mChangeNotice[obj].WeakRef->Release();
+			mChangeNotice.erase(obj);
+		}
 	}
 }
 void ScriptManager::removeChangeNotice(asIScriptObject* obj)
@@ -489,6 +512,7 @@ void ScriptManager::removeChangeNotice(asIScriptObject* obj)
 	{
 		auto& notice = mChangeNotice.at(obj);
 		notice.WeakRef->Release();
+
 		mChangeNotice.erase(obj);
 	}
 }
@@ -569,7 +593,7 @@ void ScriptManager::addHookFromScript(const std::string& hook, const std::string
 
 	static std::function<void(asIScriptObject* oldObj, asIScriptFunction* func, asIScriptObject* newObj)> updateChangeNotice;
 	if (!updateChangeNotice)
-		updateChangeNotice = [this](asIScriptObject* oldObj, asIScriptFunction* func, asIScriptObject* newObj)
+		updateChangeNotice = [this, hook](asIScriptObject* oldObj, asIScriptFunction* func, asIScriptObject* newObj)
 		{
 			for (auto& hooks : mScriptHooks)
 			{
@@ -581,7 +605,7 @@ void ScriptManager::addHookFromScript(const std::string& hook, const std::string
 						newObj->GetWeakRefFlag()->AddRef();
 
 					it->WeakRef->Release();
-					removeChangeNotice(it->Object);
+					removeChangeNotice(it->Object, hook);
 
 					if (newObj)
 					{
@@ -590,7 +614,7 @@ void ScriptManager::addHookFromScript(const std::string& hook, const std::string
 
 						it->WeakRef = it->Object->GetWeakRefFlag();
 
-						addChangeNotice(newObj, [=](asIScriptObject* evenNewerObj) {
+						addChangeNotice(newObj, hook, [=](asIScriptObject* evenNewerObj) {
 							updateChangeNotice(newObj, it->Function, evenNewerObj);
 						});
 					}
@@ -600,7 +624,7 @@ void ScriptManager::addHookFromScript(const std::string& hook, const std::string
 			}
 		};
 
-	addChangeNotice(obj, [=](asIScriptObject* newObj) {
+	addChangeNotice(obj, hook, [=](asIScriptObject* newObj) {
 		updateChangeNotice(obj, funcptr, newObj);
 	});
 }
@@ -639,6 +663,7 @@ void ScriptManager::removeHookFromScript(const std::string& hook, const std::str
 	else
 		funcptr = obj->GetObjectType()->GetMethodByName(func.c_str());
 
+	removeChangeNotice(obj, hook);
 	removeHook(hook, funcptr, obj);
 }
 

@@ -139,7 +139,8 @@ public:
 	void addPostLoadCallback(const std::string& id, const ScriptPostLoadCallbackFun& func);
 	bool hasPostLoadCallback(const std::string& id) const;
 
-	void addChangeNotice(asIScriptObject* obj, const ScriptObjectCallbackFun& callback);
+	void addChangeNotice(asIScriptObject* obj, const std::string& name, const ScriptObjectCallbackFun& callback);
+	void removeChangeNotice(asIScriptObject* obj, const std::string& name);
 	void removeChangeNotice(asIScriptObject* obj);
 
 
@@ -166,8 +167,14 @@ private:
 	};
 	struct ChangeNotice
 	{
+		struct NoticeCallback
+		{
+			std::string Name;
+			ScriptObjectCallbackFun Callback;
+		};
+
 		asILockableSharedBool* WeakRef;
-		std::function<void(asIScriptObject*)> Callback;
+		std::list<NoticeCallback> Callbacks;
 	};
 	struct ScriptHook
 	{
