@@ -148,6 +148,14 @@ void ScriptManager::init()
 	mEngine = eng;
 }
 
+void ScriptManager::initBare()
+{
+	asIScriptEngine* eng = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	eng->SetUserData(this, 0x4547);
+	eng->SetMessageCallback(asFUNCTION(error), this, asCALL_CDECL_OBJFIRST);
+
+	mEngine = eng;
+}
 
 bool ScriptManager::isLoaded(const std::string& name) const
 {

@@ -65,6 +65,13 @@ extern "C"
 
 		server_app->setBoolProp("headless", true);
 	}
+	EXPORT void server_cmd(const char* cmd)
+	{
+		if (!server_app)
+			return;
+
+		server_app->runCommand(cmd);
+	}
 	EXPORT void server_setBProp(const char* name, bool value)
 	{
 		if (!server_app)

@@ -101,6 +101,7 @@ public:
 	void registerSerializedType(const std::string& name, const std::function<CUserType*()>& ser);
 
 	void init();
+	void initBare();
 
 
 	// Script management functions

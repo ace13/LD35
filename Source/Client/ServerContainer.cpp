@@ -178,8 +178,11 @@ bool ServerContainer::init()
 		return false;
 #endif
 
-	mServerInit = (ServerInit_f)READSYM("server_init");
-	mServerRun  = (ServerRun_f) READSYM("server_run");
+	mServerInit     =     (ServerInit_f)READSYM("server_init");
+	mServerRun      =      (ServerRun_f)READSYM("server_run");
+	mServerStop     =     (ServerStop_f)READSYM("server_stop");
+	mServerReset    =    (ServerReset_f)READSYM("server_reset");
+	mServerRunCmd   =   (ServerRunCmd_f)READSYM("server_cmd");
 
 	mServerSetBProp = (ServerSetBProp_f)READSYM("server_setBProp");
 	mServerGetBProp = (ServerGetBProp_f)READSYM("server_getBProp");
@@ -190,6 +193,9 @@ bool ServerContainer::init()
 
 	if (mServerInit
 		&& mServerRun
+		&& mServerRunCmd
+		&& mServerStop
+		&& mServerReset
 		&& mServerSetBProp
 		&& mServerGetBProp
 		&& mServerSetFProp
@@ -215,5 +221,24 @@ bool ServerContainer::init()
 
 void ServerContainer::launch()
 {
-	mServerRun();
+	if (mServerState == State_Stopped)
+	{
+		mServerRun();
+		mServerState = State_Starting;
+	}
+}
+
+void ServerContainer::stop()
+{
+	if (mServerState == State_Running)
+	{
+		mServerStop();
+		mServerState = State_Stopping;
+	}
+}
+
+void ServerContainer::runCmd(const std::string& cmd)
+{
+	if (mServerState == State_Running)
+		mServerRunCmd(cmd.c_str());
 }

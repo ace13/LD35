@@ -210,7 +210,7 @@ void Application::init()
 	});
 
 	man.init();
-	mClientSM.init();
+	mClientSM.initBare();
 
 	man.addDefine("SERVER");
 	mClientSM.addDefine("CLIENT");

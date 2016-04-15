@@ -120,8 +120,6 @@ namespace
 	}
 }
 
-ServerContainer server;
-
 Application::Application()
 {
 	auto dur = Time::getClockPrecision();
@@ -136,6 +134,7 @@ Application::Application()
 	mEngine.add<sf::RenderWindow>();
 //	mEngine.add<FileWatcher>();
 	mEngine.add<ResourceManager>();
+	mEngine.add<ServerContainer>();
 }
 
 Application::~Application()
@@ -144,8 +143,6 @@ Application::~Application()
 
 void Application::init()
 {
-	server.init();
-
 	auto beg = Clock::now();
 	mEngine.init();
 

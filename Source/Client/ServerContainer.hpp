@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 class ServerContainer
 {
 public:
@@ -20,6 +22,9 @@ public:
 
 	bool init();
 	void launch();
+	void stop();
+
+	void runCmd(const std::string& cmd);
 
 private:
 	State mServerState;
@@ -31,6 +36,12 @@ private:
 	ServerInit_f mServerInit;
 	typedef void(*ServerRun_f)();
 	ServerRun_f mServerRun;
+	typedef void(*ServerStop_f)();
+	ServerStop_f mServerStop;
+	typedef void(*ServerReset_f)();
+	ServerReset_f mServerReset;
+	typedef void(*ServerRunCmd_f)(const char*);
+	ServerRunCmd_f mServerRunCmd;
 	typedef void(*ServerSetBProp_f)(const char*, bool);
 	ServerSetBProp_f mServerSetBProp;
 	typedef void(*ServerSetIProp_f)(const char*, int);
