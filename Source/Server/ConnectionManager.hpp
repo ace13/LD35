@@ -26,7 +26,11 @@ public:
 	void sendPacketTo(Client cid, const sf::Packet& packet);
 	void sendPacketToAll(const sf::Packet& packet);
 	void sendPacketToAllBut(Client cid, const sf::Packet& packet);
+
+	bool hasClient(Client cid) const;
 	sf::TcpSocket& getSocket(Client cid);
+	const std::string& getName(Client cid) const;
+	void setName(Client cid, const std::string& name);
 
 	sf::SocketSelector getSelector();
 	std::vector<Client> getClients(const sf::SocketSelector& selector);
@@ -34,6 +38,13 @@ public:
 	size_t numClients() const;
 
 private:
-	std::unordered_map<Client, std::unique_ptr<sf::TcpSocket>> mClients;
+	struct ClientObject
+	{
+		Client ID;
+		std::unique_ptr<sf::TcpSocket> Socket;
+		std::string Name;
+	};
+
+	std::unordered_map<Client, ClientObject> mClients;
 	Client mClientCounter;
 };

@@ -132,16 +132,23 @@ namespace
 		*/
 		PacketType_Script = 0x0597,
 
+		/* Player ID information
+
+		   <uint32> ID      (0-2048)
+		*/
+		PacketType_PlayerID = 0x14A3,
+
 		/* Player information
 
-		   <uint32> ID
+		   <uint32> ID      (0-2048)
+		   <string> Name
 		*/
-		PacketType_Player = 0x14A3,
+		PacketType_Player = 0x0744,
 
 		/* Object creation
 		
-		   <uint32> ID
-		   <uint32> OwnerID
+		   <uint32> ID      (0-2048 for player objects)
+		   <uint32> OwnerID (0-2048)
 		   <string> Module
 		   <string> Name
 		*/
@@ -514,6 +521,21 @@ void Application::serverLoop()
 
 					switch (packetType)
 					{
+					case PacketType_Player:
+						{
+							std::string name;
+							packet >> name;
+
+							mConnections.setName(client, name);
+
+							sf::Packet packet;
+							packet << uint16_t(PacketType_Player);
+							packet << uint32_t(client);
+							packet << name;
+
+							mConnections.sendPacketToAllBut(client, packet);
+						} break;
+
 					case PacketType_Update:
 						{
 							do
@@ -522,7 +544,13 @@ void Application::serverLoop()
 								packet >> id;
 
 								if (mObjects.count(id) > 0)
-									mObjects.at(id).injectPacket(packet);
+								{
+									auto& obj = mObjects.at(id);
+									if (obj.getOwner() == id)
+										mObjects.at(id).injectPacket(packet);
+									else
+										break;
+								}
 								else
 									break;
 							} while (packet && !packet.endOfPacket());
@@ -543,7 +571,7 @@ void Application::serverLoop()
 					auto cid = mConnections.addClient(std::move(client));
 
 					sf::Packet packet;
-					packet << uint16_t(PacketType_Player);
+					packet << uint16_t(PacketType_PlayerID);
 					packet << cid;
 					mConnections.sendPacketTo(cid, packet);
 
@@ -576,6 +604,16 @@ void Application::serverLoop()
 
 					for (auto& obj : mObjects)
 					{
+						if (obj.first < 2048 && mConnections.hasClient(obj.first))
+						{
+							sf::Packet packet;
+							packet << uint16_t(PacketType_Player);
+							packet << uint32_t(obj.first);
+							packet << mConnections.getName(obj.first);
+
+							mConnections.sendPacketTo(cid, packet);
+						}
+
 						sf::Packet packet;
 						packet << (uint16_t)PacketType_Create;
 						obj.second.buildCreatePacket(packet);

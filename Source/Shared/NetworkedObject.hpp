@@ -33,6 +33,7 @@ public:
 
 	int getID() const;
 	void setOwner(int id);
+	int getOwner() const;
 
 	static void setLocalID(int id);
 	static int getLocalID();

@@ -79,7 +79,7 @@ void GameState::tick(const Timespan& dt)
 	{
 		switch (netEv.Type)
 		{
-		case ConnectionManager::Event::Type_Player:
+		case ConnectionManager::Event::Type_PlayerID:
 			{
 				uint32_t id;
 				netEv.Data >> id;

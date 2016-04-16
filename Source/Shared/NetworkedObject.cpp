@@ -195,6 +195,11 @@ void NetworkedObject::setOwner(int id)
 	mOwnerID = id;
 }
 
+int NetworkedObject::getOwner() const
+{
+	return mOwnerID;
+}
+
 void NetworkedObject::setLocalID(int id)
 {
 	localID = id;
