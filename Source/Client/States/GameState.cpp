@@ -62,14 +62,16 @@ void GameState::tick(const Timespan& dt)
 {
 	for (auto& obj : mObjects)
 	{
-		obj.second.tick();
+		obj.second.tick(dt);
 
 		sf::Packet p;
+		p << uint16_t(ConnectionManager::Event::Type_Update);
 		if (obj.second.buildPacket(p))
 			mConnection->send(p);
 	}
 
-	mServer->tick();
+	if (mLocal)
+		mServer->tick();
 	mConnection->tick();
 
 	ConnectionManager::Event netEv;

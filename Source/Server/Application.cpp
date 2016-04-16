@@ -482,6 +482,26 @@ void Application::serverLoop()
 				else
 				{
 					std::cout << client << ": " << packet.getDataSize() << "B of data received." << std::endl;
+
+					uint16_t packetType;
+					packet >> packetType;
+
+					switch (packetType)
+					{
+					case PacketType_Update:
+						{
+							do
+							{
+								int32_t id;
+								packet >> id;
+
+								if (mObjects.count(id) > 0)
+									mObjects.at(id).injectPacket(packet);
+								else
+									break;
+							} while (packet && !packet.endOfPacket());
+						} break;
+					}
 				}
 			}
 
@@ -510,11 +530,38 @@ void Application::serverLoop()
 
 						mConnections.sendPacketTo(cid, packet);
 					}
+
+					auto* mod = man.getEngine()->GetModule("./scripts/testing.as");
+					auto* obj = reinterpret_cast<asIScriptObject*>(man.getEngine()->CreateScriptObject(mod->GetObjectTypeByName("Player")));
+
+					mObjects[cid] = NetworkedObject(cid, obj);
+
+					for (auto& obj : mObjects)
+					{
+						sf::Packet packet;
+						packet << (uint16_t)PacketType_Create;
+						obj.second.buildCreatePacket(packet);
+
+						mConnections.sendPacketTo(cid, packet);
+					}
 				}
 				else
 				{
 					std::cout << "Client " << client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " failed to connect! Error " << ret << std::endl;
 				}
+			}
+		}
+
+		for (auto& obj : mObjects)
+		{
+			obj.second.tick(dt);
+
+			sf::Packet packet;
+			packet << uint16_t(PacketType_Update);
+
+			if (obj.second.buildPacket(packet))
+			{
+				mConnections.sendPacketToAll(packet);
 			}
 		}
 

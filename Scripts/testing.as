@@ -1,12 +1,5 @@
 #include "Elements.as"
 
-Player@ p;
-
-void OnLoad()
-{
-	@p = Player();
-}
-
 namespace Input
 {
 	enum Values
@@ -49,6 +42,16 @@ class Player
 			Hooks::Remove("Update");
 #endif
 		}
+	}
+
+	string side()
+	{
+		#if CLIENT
+		return "CLIENT";
+		#endif
+		#if SERVER
+		return "SERVER";
+		#endif
 	}
 
 #if CLIENT
@@ -113,11 +116,15 @@ class Player
 
 	void tick(const Timespan&in dt)
 	{
+//#if SERVER
 		sf::Vec2 targetVelocity(
 			((cl_InputValues & Input::Input_Right) == Input::Input_Right ? 1 : 0) - ((cl_InputValues & Input::Input_Left) == Input::Input_Left ? 1 : 0),
 			((cl_InputValues & Input::Input_Down) == Input::Input_Down ? 1 : 0) - ((cl_InputValues & Input::Input_Up) == Input::Input_Up ? 1 : 0)
 		);
+
 		sv_Velocity += (targetVelocity - sv_Velocity) * dt.Seconds * 2;
+//#endif
+
 		sv_Position += sv_Velocity * 250 * dt.Seconds;
 	}
 

@@ -263,7 +263,7 @@ void Application::run()
 	}
 
 	window.setView(gameView);
-	state.pushState(new States::GameState());
+	state.pushState(new States::GameState(42035, sf::IpAddress::LocalHost));
 	gameView = window.getView();
 
 	const Timespan tickLength = std::chrono::milliseconds(15);

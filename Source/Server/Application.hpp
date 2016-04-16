@@ -4,6 +4,7 @@
 
 #include <Core/Engine.hpp>
 #include <Core/ScriptManager.hpp>
+#include <Shared/NetworkedObject.hpp>
 
 #include <SFML/Network/TcpListener.hpp>
 
@@ -79,6 +80,8 @@ private:
 	sf::TcpListener mSocket;
 
 	std::unordered_map<std::string, ServerProperty> mProperties;
+	std::unordered_map<int32_t, NetworkedObject> mObjects;
+
 	std::thread mWorkThread;
 	bool mRunning;
 	ServerState mState;

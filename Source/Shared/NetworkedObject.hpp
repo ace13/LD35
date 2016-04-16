@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Core/ScriptManager.hpp>
+#include <Core/Time.hpp>
+
 #include <vector>
 
 namespace sf { class Packet; }
@@ -10,7 +12,7 @@ class NetworkedObject
 public:
 	enum
 	{
-		UpdateTick = 1000 / 20
+		UpdateTick = 1000 / 10
 	};
 
 	NetworkedObject();
@@ -21,7 +23,8 @@ public:
 
 	NetworkedObject& operator=(const NetworkedObject&);
 
-	void tick();
+	void tick(const Timespan& dt);
+	bool buildCreatePacket(sf::Packet& out);
 	bool buildPacket(sf::Packet& out);
 	bool injectPacket(sf::Packet& in);
 
@@ -33,6 +36,12 @@ private:
 	struct TrackedProperty
 	{
 		uint8_t ID;
+		bool Owned;
+
+#ifdef _DEBUG
+		std::string Name;
+#endif
+
 		size_t Size;
 		void* Address;
 		uint32_t Hash;
@@ -44,4 +53,6 @@ private:
 
 	std::vector<TrackedProperty> mTracked;
 	std::vector<TrackedProperty*> mDirty;
+
+	Timespan mWaitTime;
 };

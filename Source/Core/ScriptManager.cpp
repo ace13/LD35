@@ -513,7 +513,15 @@ void ScriptManager::addChangeNotice(asIScriptObject* obj, const std::string& nam
 		obj->GetWeakRefFlag()->AddRef();
 	}
 	else
-		mChangeNotice[obj].Callbacks.push_back({ name, callback });
+	{
+		auto& callbacks = mChangeNotice[obj].Callbacks;
+
+		auto it = std::find_if(callbacks.begin(), callbacks.end(), [name](ChangeNotice::NoticeCallback& it) { return it.Name == name; });
+		if (it != callbacks.end())
+			callbacks.erase(it);
+
+		callbacks.push_back({ name, callback });
+	}
 }
 void ScriptManager::removeChangeNotice(asIScriptObject* obj, const std::string& name)
 {
