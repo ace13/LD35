@@ -4,6 +4,8 @@
 
 #include <list>
 
+class Engine;
+
 class StateManager
 {
 public:
@@ -21,7 +23,12 @@ public:
 	void draw(sf::RenderTarget& rt);
 	void drawUI(sf::RenderTarget& rt);
 
+	Engine& getEngine() { return *mEngine; }
+	void setEngine(Engine& engine) { mEngine = &engine; }
+
 private:
 	IState* mCurState;
 	std::list<IState*> mOldStates;
+
+	Engine* mEngine;
 };

@@ -138,9 +138,9 @@ Application::Application()
 	mEngine.add<ScriptManager>();
 	mEngine.add<sf::RenderWindow>();
 	mEngine.add<ConnectionManager>();
-	mEngine.add<ResourceManager>();
 	mEngine.add<ServerContainer>();
 	mEngine.add<StateManager>();
+	mEngine.add<ResourceManager>();
 }
 
 Application::~Application()
@@ -271,6 +271,7 @@ void Application::run()
 	auto& man = mEngine.get<ScriptManager>();
 	auto& connection = mEngine.get<ConnectionManager>();
 	auto& state = mEngine.get<StateManager>();
+	state.setEngine(mEngine);
 	state.pushState(new States::IntroState());
 
 	window.create({ 800, 600 }, "LD35 Preparational Client");
