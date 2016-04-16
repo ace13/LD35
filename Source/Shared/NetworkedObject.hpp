@@ -29,9 +29,13 @@ public:
 	bool buildPacket(sf::Packet& out);
 	bool injectPacket(sf::Packet& in);
 
+	asIScriptObject* getObject();
+
 	int getID() const;
 	void setOwner(int id);
+
 	static void setLocalID(int id);
+	static int getLocalID();
 
 private:
 	void updateObject(asIScriptObject* newObj);

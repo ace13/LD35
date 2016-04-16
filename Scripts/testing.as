@@ -26,6 +26,8 @@ class Player
 		font = Resources::GetFont("arial.ttf");
 		ElementFade = 0;
 		secs = 0;
+
+		localPlayer = false;
 #endif
 
 		cl_InputValues = 0;
@@ -65,6 +67,9 @@ class Player
 		secs += dt.Seconds;
 		if (ElementFade > 0)
 			ElementFade = max(0, ElementFade - dt.Seconds);
+
+		if (!localPlayer)
+			return;
 
 		cl_InputValues = 0;
 		if (sf::Keyboard::IsPressed(sf::Keyboard::W))
@@ -169,12 +174,14 @@ class Player
 		}
 	}
 
+	bool localPlayer;
+
 	sf::Renderer@ Rend;
 	float secs, ElementFade;
 	Resources::Font font;
 #endif
 
-	int cl_InputValues;
+	int cl_InputValues, cl_Element;
 	sf::Vec2 sv_Position, sv_Velocity, cl_Target;
 
 	IElement@ Element;

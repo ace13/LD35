@@ -121,6 +121,12 @@ void GameState::tick(const Timespan& dt)
 
 					mObjects[id] = NetworkedObject(id, scriptobj);
 					mObjects[id].setOwner(owner);
+
+					if (NetworkedObject::getLocalID() == owner && obj == "Player")
+					{
+						uint8_t b = 1;
+						std::memcpy(mObjects[id].getObject()->GetAddressOfProperty(0), &b, 1);
+					}
 				}
 			} break;
 		case ConnectionManager::Event::Type_Update:

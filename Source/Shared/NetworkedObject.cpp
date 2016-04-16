@@ -179,6 +179,11 @@ bool NetworkedObject::injectPacket(sf::Packet& in)
 	return true;
 }
 
+asIScriptObject* NetworkedObject::getObject()
+{
+	return mObject;
+}
+
 int NetworkedObject::getID() const
 {
 	return mID;
@@ -192,6 +197,10 @@ void NetworkedObject::setOwner(int id)
 void NetworkedObject::setLocalID(int id)
 {
 	localID = id;
+}
+int NetworkedObject::getLocalID()
+{
+	return localID;
 }
 
 void NetworkedObject::updateObject(asIScriptObject* newObj)
