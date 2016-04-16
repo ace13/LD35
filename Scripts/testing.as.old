@@ -1,0 +1,210 @@
+Clock@ t;
+
+void OnLoad()
+{
+	println("Loaded.");
+	@t = Clock();
+}
+
+void OnReload()
+{
+	println("Reloaded.");
+}
+
+class Clock
+{
+	Clock()
+	{
+		Hooks::Add("Tick", "tick");
+
+#if CLIENT
+		Hooks::Add("Update", "update");
+		Hooks::Add("DrawUI", "draw");
+
+		font = Resources::GetFont("arial.ttf");
+		time = 0;
+		frames = 0;
+#endif
+
+		updates = 0;
+		target = Time::At(2016,04,16, 03,00,00);
+		nextReport = Time::Now + Time::Seconds(1);
+
+		println("Created clock.");
+	}
+
+	~Clock()
+	{
+		if (!RELOADING)
+		{
+			Hooks::Remove("Tick", "tick");
+
+#if CLIENT
+			Hooks::Remove("DrawUI");
+			Hooks::Remove("Update");
+#endif
+		}
+
+		println("Destroyed clock.");
+	}
+
+	string scriptHost()
+	{
+#if CLIENT
+		return "CLIENT";
+#endif
+#if SERVER
+		return "SERVER";
+#endif
+		return "??????";
+	}
+
+	string toString(const Timespan&in span)
+	{
+		float sec = span.Seconds;
+
+		int hours   = int(sec / 3600);
+		int minutes = int(sec % 3600) / 60;
+		int seconds = int(sec % 3600) % 60;
+
+		return (hours <= 9 ? "0" : "") + hours + ":" +
+			(minutes <= 9 ? "0" : "") + minutes + ":" +
+			(seconds <= 9 ? "0" : "") + seconds;
+	}
+
+#if CLIENT
+	void update(const Timespan&in dt)
+	{
+		time += dt.Seconds;
+	}
+#endif
+
+	void tick(const Timespan&in dt)
+	{
+		updates++;
+
+		if (Time::Now > nextReport)
+		{
+			print(scriptHost());
+			print(" Time stats: ");
+#if CLIENT
+			print(time);
+			print("s ");
+			print((frames/2) + "FPS ");
+			frames = 0;
+#endif
+			println((updates/2) + "UPS");
+			updates = 0;
+
+			nextReport = Time::Now + Time::Seconds(2);
+		}
+	}
+
+	float clamp(float a, float b, float c)
+	{
+		if (b < a)
+			return a;
+		if (b > c)
+			return c;
+		return b;
+	}
+
+	float min(float a, float b)
+	{
+		return (a < b ? a : b);
+	}
+
+
+#if CLIENT
+	void draw(sf::Renderer@ rend)
+	{
+		frames++;
+
+		sf::View v = rend.View;
+
+		//v.Zoom(1 + sin(time * 2) / 100);
+		//v.Rotate(cos(time*2) *5);
+		//v.Center = -sf::Vec2(cos(time), sin(time)) * 5;
+		v.Center = sf::Vec2(0,0);
+
+		rend.View = v;
+
+		Timespan remain = (target - Time::Now);
+
+		sf::Text title("Time remaining until theme:\n");
+		title.SetFont(@font.Font);
+
+		title.CharacterSize = 20;
+		title.Origin = title.LocalBounds.Center;
+		title.Position = sf::Vec2(0, -250);
+
+		rend.Draw(title);
+		title.String = toString(remain);
+		title.Origin = title.LocalBounds.Center;
+
+		title.Move(sf::Vec2(0, 18));
+
+		rend.Draw(title);
+
+		{
+			sf::RectangleShape dial(sf::Vec2(5, 100));
+
+			float timeleft = remain.Seconds;
+
+			dial.Origin = sf::Vec2(2.5, 100);
+
+			dial.Rotation = (timeleft / 3600) * (360 / 12);
+
+			rend.Draw(dial);
+
+			dial.Scale = sf::Vec2(0.75, 1.5);
+
+			dial.Rotation = ((timeleft % 3600) / 60) * (360 / 60);
+
+			rend.Draw(dial);
+
+			dial.Scale = sf::Vec2(0.5, 1.75);
+			dial.FillColor = sf::Color::Red;
+
+			float secs = (timeleft % 3600) % 60;
+			float remaind = 1 - (secs - floor(secs));
+			//println(remain);
+
+			dial.Rotation = floor(secs) * (360 / 60);
+
+			rend.Draw(dial);
+		}
+
+		sf::RectangleShape face(sf::Vec2(4, 25));
+		face.Origin = sf::Vec2(2, 25);
+
+		const int j = 24;
+		for (int i = 0; i < j; ++i)
+		{
+			if (i % 2 == 1)
+				face.Scale = sf::Vec2(0.25, 1);
+			else
+				face.Scale = sf::Vec2(1, 1);
+
+			float ang = i * (360 / j);
+
+			face.Rotation = 90 + ang;
+			face.Position = sf::Vec2(
+					cos(ang * (3.1415/180)) * 150,
+					sin(ang * (3.141519/180)) * 150
+				);
+
+			rend.Draw(face);
+		}
+	}
+
+	private Resources::Font font;
+	private float time;
+	private int frames;
+
+#endif
+
+	private Timestamp nextReport;
+	private Timestamp target;
+	private int updates;
+}

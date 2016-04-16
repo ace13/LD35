@@ -229,6 +229,8 @@ bool ScriptManager::loadFromMemory(const std::string& name, const void* data, si
 #ifndef NDEBUG
 			puts(ASException::GetMessage(r));
 #endif
+
+			mEngine->DiscardModule(scratchName);
 			return false;
 		}
 
@@ -625,8 +627,9 @@ void ScriptManager::addHookFromScript(const std::string& hook, const std::string
 
 						it->WeakRef = it->Object->GetWeakRefFlag();
 
-						addChangeNotice(newObj, hook, [=](asIScriptObject* evenNewerObj) {
-							updateChangeNotice(newObj, it->Function, evenNewerObj);
+						ScriptManager::ScriptHook hookObj = *it;
+						addChangeNotice(newObj, hook, [hookObj](asIScriptObject* evenNewerObj) {
+							updateChangeNotice(hookObj.Object, hookObj.Function, evenNewerObj);
 						});
 					}
 					else

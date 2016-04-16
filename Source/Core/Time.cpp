@@ -226,6 +226,7 @@ void Time::registerTimeTypes(ScriptManager& man)
 		AS_ASSERT(eng->RegisterObjectBehaviour("Timespan", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(destroyTimespan), asCALL_CDECL_OBJFIRST));
 
 		AS_ASSERT(eng->RegisterObjectMethod("Timespan", "Timespan& opAssign(const Timespan&in)", asMETHODPR(Timespan, operator=, (const Timespan&), Timespan&), asCALL_THISCALL));
+		AS_ASSERT(eng->RegisterObjectMethod("Timespan", "Timespan& opAddAssign(const Timespan&in) const", asMETHODPR(Timespan, operator+=, (const Timespan&), Timespan&), asCALL_THISCALL));
 		AS_ASSERT(eng->RegisterObjectMethod("Timespan", "int opCmp(const Timespan&in) const", asFUNCTION(opCmpSpan), asCALL_CDECL_OBJFIRST));
 
 		AS_ASSERT(eng->RegisterObjectMethod("Timespan", "int64 get_Count() const", asMETHOD(Timespan, count), asCALL_THISCALL));

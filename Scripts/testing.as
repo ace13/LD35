@@ -1,19 +1,26 @@
-Clock@ t;
+Player@ p;
 
 void OnLoad()
 {
-	println("Loaded.");
-	@t = Clock();
+	@p = Player();
 }
 
-void OnReload()
+namespace Input
 {
-	println("Reloaded.");
+	enum Values
+	{
+		Input_Up    = 1 << 0,
+		Input_Down  = 1 << 1,
+		Input_Left  = 1 << 2,
+		Input_Right = 1 << 3,
+		Input_Fire  = 1 << 4
+	}
 }
 
-class Clock
+class Player
 {
-	Clock()
+
+	Player()
 	{
 		Hooks::Add("Tick", "tick");
 
@@ -21,19 +28,12 @@ class Clock
 		Hooks::Add("Update", "update");
 		Hooks::Add("DrawUI", "draw");
 
-		font = Resources::GetFont("arial.ttf");
-		time = 0;
-		frames = 0;
+//		font = Resources::GetFont("arial.ttf");
 #endif
-
-		updates = 0;
-		target = Time::At(2016,04,16, 03,00,00);
-		nextReport = Time::Now + Time::Seconds(1);
-
-		println("Created clock.");
+		InputValues = 0;
 	}
 
-	~Clock()
+	~Player()
 	{
 		if (!RELOADING)
 		{
@@ -44,154 +44,74 @@ class Clock
 			Hooks::Remove("Update");
 #endif
 		}
-		
-		println("Destroyed clock.");
-	}
-
-	string toString(const Timespan&in span)
-	{
-		float sec = span.Seconds;
-
-		int hours   = int(sec / 3600);
-		int minutes = int(sec % 3600) / 60;
-		int seconds = int(sec % 3600) % 60;
-
-		return (hours <= 9 ? "0" : "") + hours + ":" +
-			(minutes <= 9 ? "0" : "") + minutes + ":" +
-			(seconds <= 9 ? "0" : "") + seconds;
 	}
 
 #if CLIENT
 	void update(const Timespan&in dt)
 	{
-		time += dt.Seconds;
+		secs += dt.Seconds;
+
+		InputValues = 0;
+
+		if (sf::Keyboard::IsPressed(sf::Keyboard::W))
+			InputValues |= Input::Input_Up;
+		if (sf::Keyboard::IsPressed(sf::Keyboard::S))
+			InputValues |= Input::Input_Down;
+		if (sf::Keyboard::IsPressed(sf::Keyboard::A))
+			InputValues |= Input::Input_Left;
+		if (sf::Keyboard::IsPressed(sf::Keyboard::D))
+			InputValues |= Input::Input_Right;
+		if (sf::Mouse::IsPressed(sf::Mouse::Left))
+		{
+			InputValues |= Input::Input_Fire;
+			Target = sf::Mouse::Position;
+		}
 	}
 #endif
 
 	void tick(const Timespan&in dt)
 	{
-		updates++;
-
-		if (Time::Now > nextReport)
-		{
-			print("Time stats: ");
 #if CLIENT
-			print(time);
-			print("s ");
-			print((frames/2) + "FPS ");
-			frames = 0;
+/*
+		sf::Packet packet;
+		packet << InputValues;
+
+*/
 #endif
-			println((updates/2) + "UPS");
-			updates = 0;
-
-			nextReport = Time::Now + Time::Seconds(2);
-		}
+		sf::Vec2 targetVelocity(
+			((InputValues & Input::Input_Right) == Input::Input_Right ? 1 : 0) - ((InputValues & Input::Input_Left) == Input::Input_Left ? 1 : 0),
+			((InputValues & Input::Input_Down) == Input::Input_Down ? 1 : 0) - ((InputValues & Input::Input_Up) == Input::Input_Up ? 1 : 0)
+		);
+		Velocity += (targetVelocity - Velocity) * dt.Seconds * 2;
+		Position += Velocity * 100 * dt.Seconds;
 	}
-
-	float clamp(float a, float b, float c)
-	{
-		if (b < a)
-			return a;
-		if (b > c)
-			return c;
-		return b;
-	}
-
-	float min(float a, float b)
-	{
-		return (a < b ? a : b);
-	}
-
 
 #if CLIENT
 	void draw(sf::Renderer@ rend)
 	{
-		frames++;
+		sf::CircleShape player(32);
 
-		sf::View v = rend.View;
+		player.Origin = sf::Vec2(32,32);
+		player.Position = Position;
 
-		v.Zoom(1 + sin(time * 2) / 100);
-//		v.Rotate(cos(time*2) *5);
-		v.Center = -sf::Vec2(cos(time), sin(time)) * 5;
+		player.Scale(sf::Vec2(1 + sin(secs * 2) / 10, 1 + sin(secs * 2) / 10));
 
-		rend.View = v;
+		rend.Draw(player);
 
-		Timespan remain = (target - Time::Now);
-
-		sf::Text title("Time remaining until theme:\n");
-		title.SetFont(@font.Font);
-
-		title.CharacterSize = 20;
-		title.Origin = title.LocalBounds.Center;
-		title.Position = sf::Vec2(0, -250);
-
-		rend.Draw(title);
-		title.String = toString(remain);
-		title.Origin = title.LocalBounds.Center;
-
-		title.Move(sf::Vec2(0, 18));
-
-		rend.Draw(title);
-
+		if ((InputValues & Input::Input_Fire) == Input::Input_Fire)
 		{
-			sf::RectangleShape dial(sf::Vec2(5, 100));
+			sf::RectangleShape line(sf::Vec2(200, 1));
+			line.Origin = sf::Vec2(0, 0.5);
+			line.Position = Position;
+			line.Rotation = atan2(Target.Y - Position.Y, Target.X - Position.X) * RAD2DEG;
 
-			float timeleft = remain.Seconds;
-
-			dial.Origin = sf::Vec2(2.5, 100);
-
-			dial.Rotation = (timeleft / 3600) * (360 / 12);
-
-			rend.Draw(dial);
-
-			dial.Scale = sf::Vec2(0.75, 1.5);
-
-			dial.Rotation = ((timeleft % 3600) / 60) * (360 / 60);
-
-			rend.Draw(dial);
-
-			dial.Scale = sf::Vec2(0.5, 1.75);
-			dial.FillColor = sf::Color::Red;
-
-			float secs = (timeleft % 3600) % 60;
-			float remaind = 1 - (secs - floor(secs));
-			//println(remain);
-
-			dial.Rotation = floor(secs) * (360 / 60);
-
-			rend.Draw(dial);
-		}
-
-		sf::RectangleShape face(sf::Vec2(4, 25));
-		face.Origin = sf::Vec2(2, 25);
-
-		const int j = 24;
-		for (int i = 0; i < j; ++i)
-		{
-			if (i % 2 == 1)
-				face.Scale = sf::Vec2(0.25, 1);
-			else
-				face.Scale = sf::Vec2(1, 1);
-
-			float ang = i * (360 / j);
-
-			face.Rotation = 90 + ang;
-			face.Position = sf::Vec2(
-					cos(ang * (3.1415/180)) * 150,
-					sin(ang * (3.141519/180)) * 150
-				);
-
-			rend.Draw(face);
+			rend.Draw(line);
 		}
 	}
 
-	private Resources::Font font;
-	private float time;
-	private int frames;
-
+	float secs;
 #endif
 
-	private Timestamp nextReport;
-	private Timestamp target;
-	private int updates;
+	int InputValues;
+	sf::Vec2 Position, Velocity, Target;
 }

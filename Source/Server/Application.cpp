@@ -1,6 +1,7 @@
 #include "Application.hpp"
 
 #include <Core/FileWatcher.hpp>
+#include <Core/Math.hpp>
 #include <Core/Time.hpp>
 #include <Core/ScriptManager.hpp>
 
@@ -195,6 +196,7 @@ void Application::init()
 		AS_ASSERT(eng->RegisterGlobalFunction("void println(const ?&in)", asFUNCTION(printlnany), asCALL_CDECL));
 	});
 	Time::registerTimeTypes(man);
+	Math::registerScriptData(man);
 	as::SFML::registerTypes(man);
 	man.addExtension("ScriptHooks", [&](asIScriptEngine* eng) {
 		AS_ASSERT(eng->SetDefaultNamespace("Hooks"));
