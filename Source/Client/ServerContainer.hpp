@@ -7,11 +7,12 @@ class ServerContainer
 public:
 	enum State
 	{
-		State_Invalid,
+		State_Invalid = -1,
+
+		State_Stopped = 0,
 		State_Starting,
 		State_Running,
-		State_Stopping,
-		State_Stopped
+		State_Stopping
 	};
 
 	ServerContainer();
@@ -22,7 +23,10 @@ public:
 
 	bool init();
 	void launch();
+	void tick();
 	void stop();
+
+	uint16_t getPort() const;
 
 	void runCmd(const std::string& cmd);
 
@@ -38,6 +42,8 @@ private:
 	ServerRun_f mServerRun;
 	typedef void(*ServerStop_f)();
 	ServerStop_f mServerStop;
+	typedef int(*ServerStatus_f)();
+	ServerStatus_f mServerStatus;
 	typedef void(*ServerReset_f)();
 	ServerReset_f mServerReset;
 	typedef void(*ServerRunCmd_f)(const char*);

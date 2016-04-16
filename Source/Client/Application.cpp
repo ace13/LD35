@@ -1,4 +1,5 @@
 #include "Application.hpp"
+#include "ConnectionManager.hpp"
 #include "ResourceManager.hpp"
 #include "ServerContainer.hpp"
 #include "StateManager.hpp"
@@ -135,7 +136,7 @@ Application::Application()
 
 	mEngine.add<ScriptManager>();
 	mEngine.add<sf::RenderWindow>();
-//	mEngine.add<FileWatcher>();
+	mEngine.add<ConnectionManager>();
 	mEngine.add<ResourceManager>();
 	mEngine.add<ServerContainer>();
 	mEngine.add<StateManager>();
@@ -259,15 +260,14 @@ void Application::run()
 {
 	std::cout << "Application started in " << Time::getRunTime() << std::endl;
 
-	mSocket.connect(sf::IpAddress::getLocalAddress(), 42035);
-	mSocket.setBlocking(false);
-
-	sf::Packet p;
 	sf::Event ev;
 	std::string modified;
+	ConnectionManager::Event netEv;
+
 	auto& window = mEngine.get<sf::RenderWindow>();
-//	auto& watch = mEngine.get<FileWatcher>();
+	auto& server = mEngine.get<ServerContainer>();
 	auto& man = mEngine.get<ScriptManager>();
+	auto& connection = mEngine.get<ConnectionManager>();
 	auto& state = mEngine.get<StateManager>();
 	state.pushState(new States::IntroState());
 
@@ -287,6 +287,10 @@ void Application::run()
 
 	auto oldframe = now;
 
+	server.init();
+	server.launch();
+	connection.connect(server.getPort(), sf::IpAddress::LocalHost);
+
 	while (window.isOpen())
 	{
 		now = Clock::now();
@@ -305,28 +309,28 @@ void Application::run()
 		// -------------
 		// Handle Events
 
-		auto ret = mSocket.receive(p);
-		if (ret == sf::Socket::Done)
+		if (connection.pollEvent(netEv))
 		{
-			std::string type;
-			p >> type;
-
-			if (type == "SCRIPT")
+			switch (netEv.Type)
 			{
-				std::string name;
-				p >> name;
-
-				ScriptManager::BytecodeStore store;
-				do
+			case ConnectionManager::Event::Type_Script:
 				{
-					uint8_t c;
-					p >> c;
-					store.Write(&c, 1);
-				} while (p);
+					std::string name;
+					netEv.Data >> name;
 
-				std::cout << "Received script state for " << name << " from the server, integrating..." << std::endl;
-				if (!man.loadFromStream(name, store))
-					std::cout << "Integration of new script code failed." << std::endl;
+					ScriptManager::BytecodeStore store;
+					do
+					{
+						uint8_t c;
+						netEv.Data >> c;
+						store.Write(&c, 1);
+					} while (netEv.Data);
+
+					std::cout << "Received script state for " << name << " from the server, integrating..." << std::endl;
+					if (!man.loadFromStream(name, store))
+						std::cout << "Integration of new script code failed." << std::endl;
+				}
+				break;
 			}
 		}
 
@@ -389,6 +393,8 @@ void Application::run()
 		while (tickTime >= tickLength)
 		{
 			// Run fixed updates
+			server.tick();
+			connection.tick();
 			state.tick(tickLength);
 			man.runHook<const Timespan&>("Tick", tickLength);
 

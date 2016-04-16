@@ -181,6 +181,7 @@ bool ServerContainer::init()
 	mServerInit     =     (ServerInit_f)READSYM("server_init");
 	mServerRun      =      (ServerRun_f)READSYM("server_run");
 	mServerStop     =     (ServerStop_f)READSYM("server_stop");
+	mServerStatus   =   (ServerStatus_f)READSYM("server_state");
 	mServerReset    =    (ServerReset_f)READSYM("server_reset");
 	mServerRunCmd   =   (ServerRunCmd_f)READSYM("server_cmd");
 
@@ -195,6 +196,7 @@ bool ServerContainer::init()
 		&& mServerRun
 		&& mServerRunCmd
 		&& mServerStop
+		&& mServerStatus
 		&& mServerReset
 		&& mServerSetBProp
 		&& mServerGetBProp
@@ -223,18 +225,34 @@ void ServerContainer::launch()
 {
 	if (mServerState == State_Stopped)
 	{
-		mServerRun();
 		mServerState = State_Starting;
+		mServerRun();
 	}
+}
+
+void ServerContainer::tick()
+{
+	if (mServerState == State_Invalid)
+		return;
+
+	mServerState = (State)mServerStatus();
 }
 
 void ServerContainer::stop()
 {
 	if (mServerState == State_Running)
 	{
-		mServerStop();
 		mServerState = State_Stopping;
+		mServerStop();
 	}
+}
+
+uint16_t ServerContainer::getPort() const
+{
+	if (mServerState == State_Invalid)
+		return 0;
+
+	return mServerGetIProp("port");
 }
 
 void ServerContainer::runCmd(const std::string& cmd)

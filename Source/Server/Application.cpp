@@ -121,6 +121,11 @@ namespace
 	{
 		std::cout << std::endl;
 	}
+
+	enum EventTypes : uint16_t
+	{
+		PacketType_Script = 0x0597
+	};
 }
 
 Application::ServerProperty::ServerProperty()
@@ -259,7 +264,7 @@ void Application::init()
 			mod->SaveByteCode(&store);
 			
 			sf::Packet packet;
-			packet << "SCRIPT";
+			packet << (uint16_t)PacketType_Script;
 			packet << file;
 			packet.append(store.getData(), store.getSize());
 
@@ -294,6 +299,10 @@ void Application::init()
 
 void Application::run()
 {
+	if (mState > State_Stopped)
+		return;
+
+	mState = State_Starting;
 	mRunning = true;
 
 	if (mProperties["local"].Bool)
@@ -327,10 +336,14 @@ void Application::run()
 
 void Application::stop()
 {
-	mRunning = false;
+	if (mState > State_Stopped && mState < State_Stopping)
+	{
+		mState = State_Stopping;
+		mRunning = false;
 
-	if (mWorkThread.joinable())
-		mWorkThread.join();
+		if (mWorkThread.joinable())
+			mWorkThread.join();
+	}
 }
 
 void Application::runCommand(const std::string& cmd)
@@ -390,6 +403,11 @@ float Application::getFloatProp(const std::string& name) const
 	return mProperties.at(name).Float;
 }
 
+Application::ServerState Application::getState() const
+{
+	return mState;
+}
+
 void Application::serverLoop()
 {
 	std::cout << "Worker thread running." << std::endl;
@@ -402,6 +420,8 @@ void Application::serverLoop()
 	Timespan tickTime(0);
 	Timestamp now = Clock::now(), nextGC = now + std::chrono::seconds(2);
 	auto oldframe = now;
+
+	mState = State_Running;
 
 	do
 	{
@@ -456,7 +476,7 @@ void Application::serverLoop()
 						mod->SaveByteCode(&store);
 
 						sf::Packet packet;
-						packet << "SCRIPT";
+						packet << (uint16_t)PacketType_Script;
 						packet << mod->GetName();
 						packet.append(store.getData(), store.getSize());
 
@@ -493,6 +513,8 @@ void Application::serverLoop()
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	} while (mRunning);
+
+	mState = State_Stopped;
 }
 
 template<>

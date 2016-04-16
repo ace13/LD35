@@ -13,6 +13,14 @@
 class Application
 {
 public:
+	enum ServerState
+	{
+		State_Stopped,
+		State_Starting,
+		State_Running,
+		State_Stopping
+	};
+
 	Application();
 	Application(const Application&) = default;
 	Application(Application&&) = default;
@@ -25,7 +33,7 @@ public:
 	void stop();
 
 	void runCommand(const std::string& cmd);
-	
+	ServerState getState() const;
 
 	void setBoolProp(const std::string& name, bool value);
 	void setIntProp(const std::string& name, int value);
@@ -73,4 +81,5 @@ private:
 	std::unordered_map<std::string, ServerProperty> mProperties;
 	std::thread mWorkThread;
 	bool mRunning;
+	ServerState mState;
 };

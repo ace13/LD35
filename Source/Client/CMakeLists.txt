@@ -1,5 +1,6 @@
 SET(HEADERS
 	Application.hpp
+	ConnectionManager.hpp
 	ResourceManager.hpp
 	ResourceManager.inl
 	ServerContainer.hpp
@@ -13,6 +14,7 @@ SET(HEADERS
 
 SET(SOURCES
 	Application.cpp
+	ConnectionManager.cpp
 	ResourceManager.cpp
 	ServerContainer.cpp
 	

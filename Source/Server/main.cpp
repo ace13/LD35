@@ -129,6 +129,12 @@ extern "C"
 		server_app->stop();
 		hEv = nullptr;
 	}
+	EXPORT int server_state()
+	{
+		if (!server_app)
+			return Application::State_Stopped;
+		return server_app->getState();
+	}
 	EXPORT void server_reset()
 	{
 		if (!server_app)
