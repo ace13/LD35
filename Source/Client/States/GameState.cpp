@@ -129,6 +129,23 @@ void GameState::tick(const Timespan& dt)
 					}
 				}
 			} break;
+		case ConnectionManager::Event::Type_Destroy:
+			{
+				uint32_t id;
+				netEv.Data >> id;
+
+				if (mObjects.count(id) > 0)
+				{
+					auto* obj = mObjects[id].getObject();
+					auto& sman = getSM().getEngine().get<ScriptManager>();
+
+					mObjects[id].updateObject(nullptr);
+					mObjects.erase(id);
+
+					sman.getEngine()->GarbageCollect(asGC_FULL_CYCLE, 5);
+				}
+			} break;
+
 		case ConnectionManager::Event::Type_Update:
 			{
 				do

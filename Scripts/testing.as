@@ -37,6 +37,7 @@ class Player
 	{
 		if (!RELOADING)
 		{
+			println("Removing player obj");
 			Hooks::Remove("Tick", "tick");
 
 #if CLIENT

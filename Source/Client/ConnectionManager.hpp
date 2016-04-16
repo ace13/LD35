@@ -34,6 +34,12 @@ public:
 			*/
 			Type_Create = 0xC347,
 
+			/* Object destruction
+
+			<uint32> ID
+			*/
+			Type_Destroy = 0xDE57,
+
 			/* Object update
 
 			Repeating:

@@ -37,9 +37,9 @@ public:
 	static void setLocalID(int id);
 	static int getLocalID();
 
-private:
 	void updateObject(asIScriptObject* newObj);
 
+private:
 	struct TrackedProperty
 	{
 		uint8_t ID;

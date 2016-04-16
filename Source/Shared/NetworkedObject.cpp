@@ -29,6 +29,7 @@ NetworkedObject::NetworkedObject(int id, asIScriptObject* obj)
 	, mSyncTime(0)
 {
 	updateObject(obj);
+	obj->Release();
 }
 NetworkedObject::NetworkedObject(const NetworkedObject& other)
 	: mID(other.mID)
@@ -92,7 +93,7 @@ void NetworkedObject::tick(const Timespan& dt)
 		mDirty.reserve(mTracked.size());
 		for (auto& tracked : mTracked)
 		{
-			if (!tracked.Owned)
+			if (!tracked.Owned && localID >= 0)
 				continue;
 
 			uint32_t newHash = Math::HashMemory(tracked.Address, tracked.Size);
@@ -115,8 +116,7 @@ void NetworkedObject::tick(const Timespan& dt)
 			mDirty.clear();
 			mDirty.reserve(mTracked.size());
 			for (auto& tracked : mTracked)
-				if (tracked.Owned)
-					mDirty.push_back(&tracked);
+				mDirty.push_back(&tracked);
 		}
 	}
 }
@@ -172,7 +172,8 @@ bool NetworkedObject::injectPacket(sf::Packet& in)
 				data[i] = std::move(c);
 			}
 
-			std::memcpy(it->Address, data.data(), size);
+			if (!it->Owned || localID != mOwnerID)
+				std::memcpy(it->Address, data.data(), size);
 		}
 	}
 

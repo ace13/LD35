@@ -147,6 +147,12 @@ namespace
 		*/
 		PacketType_Create = 0xC347,
 
+		/* Object destruction
+
+		   <uint32> ID
+		*/
+		PacketType_Destroy = 0xDE57,
+
 		/* Object update
 		
 		   Repeating:
@@ -485,6 +491,19 @@ void Application::serverLoop()
 					std::cout << "Client " << client << " (" << sock.getRemoteAddress().toString() << ":" << sock.getRemotePort() << ") disconnected." << std::endl;
 
 					mConnections.removeClient(client);
+
+					if (mObjects.count(client) > 0)
+					{
+						sf::Packet packet;
+						packet << uint16_t(PacketType_Destroy);
+						packet << uint32_t(client);
+						mConnections.sendPacketToAll(packet);
+
+						mObjects[client].updateObject(nullptr);
+						mObjects.erase(client);
+
+						man.getEngine()->GarbageCollect(asGC_FULL_CYCLE, 5);
+					}
 				}
 				else
 				{
@@ -549,6 +568,11 @@ void Application::serverLoop()
 
 					mObjects[cid] = NetworkedObject(cid, obj);
 					mObjects[cid].setOwner(cid);
+
+					packet = sf::Packet();
+					packet << uint16_t(PacketType_Create);
+					mObjects[cid].buildCreatePacket(packet);
+					mConnections.sendPacketToAllBut(cid, packet);
 
 					for (auto& obj : mObjects)
 					{
