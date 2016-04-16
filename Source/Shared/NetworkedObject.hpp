@@ -12,7 +12,8 @@ class NetworkedObject
 public:
 	enum
 	{
-		UpdateTick = 1000 / 10
+		UpdateTick = 1000 / 10,
+		WorldResync = 1000 / 2
 	};
 
 	NetworkedObject();
@@ -29,6 +30,8 @@ public:
 	bool injectPacket(sf::Packet& in);
 
 	int getID() const;
+	void setOwner(int id);
+	static void setLocalID(int id);
 
 private:
 	void updateObject(asIScriptObject* newObj);
@@ -47,12 +50,12 @@ private:
 		uint32_t Hash;
 	};
 
-	int mID;
+	int mID, mOwnerID;
 	asIScriptObject* mObject;
 	asILockableSharedBool* mWeakRef;
 
 	std::vector<TrackedProperty> mTracked;
 	std::vector<TrackedProperty*> mDirty;
 
-	Timespan mWaitTime;
+	Timespan mWaitTime, mSyncTime;
 };

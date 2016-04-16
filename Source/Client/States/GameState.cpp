@@ -79,6 +79,14 @@ void GameState::tick(const Timespan& dt)
 	{
 		switch (netEv.Type)
 		{
+		case ConnectionManager::Event::Type_Player:
+			{
+				uint32_t id;
+				netEv.Data >> id;
+
+				NetworkedObject::setLocalID(id);
+			} break;
+
 		case ConnectionManager::Event::Type_Script:
 			{
 				std::string name;
@@ -98,8 +106,8 @@ void GameState::tick(const Timespan& dt)
 			} break;
 		case ConnectionManager::Event::Type_Create:
 			{
-				uint32_t id;
-				netEv.Data >> id;
+				uint32_t id, owner;
+				netEv.Data >> id >> owner;
 				std::string mod, obj;
 				netEv.Data >> mod >> obj;
 
@@ -112,6 +120,7 @@ void GameState::tick(const Timespan& dt)
 					auto* scriptobj = reinterpret_cast<asIScriptObject*>(sman.getEngine()->CreateScriptObject(objtype));
 
 					mObjects[id] = NetworkedObject(id, scriptobj);
+					mObjects[id].setOwner(owner);
 				}
 			} break;
 		case ConnectionManager::Event::Type_Update:

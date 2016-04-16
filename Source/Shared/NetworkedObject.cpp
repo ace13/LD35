@@ -6,35 +6,48 @@
 
 #include <algorithm>
 
+namespace
+{
+	int localID = -1;
+}
+
 NetworkedObject::NetworkedObject()
 	: mID(0)
+	, mOwnerID(-1)
 	, mObject(nullptr)
 	, mWeakRef(nullptr)
 	, mWaitTime(0)
+	, mSyncTime(0)
 {
 }
 NetworkedObject::NetworkedObject(int id, asIScriptObject* obj)
 	: mID(id)
+	, mOwnerID(-1)
 	, mObject(nullptr)
 	, mWeakRef(nullptr)
 	, mWaitTime(0)
+	, mSyncTime(0)
 {
 	updateObject(obj);
 }
 NetworkedObject::NetworkedObject(const NetworkedObject& other)
 	: mID(other.mID)
+	, mOwnerID(other.mOwnerID)
 	, mObject(nullptr)
 	, mWeakRef(nullptr)
 	, mWaitTime(other.mWaitTime)
+	, mSyncTime(other.mSyncTime)
 {
 	updateObject(other.mObject);
 }
 NetworkedObject::NetworkedObject(NetworkedObject&& other)
 	: mID(std::move(other.mID))
+	, mOwnerID(std::move(other.mOwnerID))
 	, mObject(std::move(other.mObject))
 	, mWeakRef(std::move(other.mWeakRef))
 	, mTracked(std::move(other.mTracked))
 	, mWaitTime(std::move(other.mWaitTime))
+	, mSyncTime(std::move(other.mSyncTime))
 {
 	other.mObject = nullptr;
 	other.mWeakRef = nullptr;
@@ -66,11 +79,14 @@ NetworkedObject& NetworkedObject::operator=(const NetworkedObject& other)
 
 void NetworkedObject::tick(const Timespan& dt)
 {
+	if (localID >= 0 && mOwnerID != localID)
+		return;
+
 	mWaitTime += dt;
 
 	if (mWaitTime > std::chrono::milliseconds(UpdateTick))
 	{
-		mWaitTime = std::chrono::microseconds(0);
+		mWaitTime = Timespan(0);
 
 		mDirty.clear();
 		mDirty.reserve(mTracked.size());
@@ -87,6 +103,22 @@ void NetworkedObject::tick(const Timespan& dt)
 			}
 		}
 	}
+
+	if (localID < 0)
+	{
+		mSyncTime += dt;
+
+		if (mSyncTime > std::chrono::milliseconds(WorldResync))
+		{
+			mSyncTime = Timespan(0);
+
+			mDirty.clear();
+			mDirty.reserve(mTracked.size());
+			for (auto& tracked : mTracked)
+				if (tracked.Owned)
+					mDirty.push_back(&tracked);
+		}
+	}
 }
 bool NetworkedObject::buildCreatePacket(sf::Packet& out)
 {
@@ -94,6 +126,7 @@ bool NetworkedObject::buildCreatePacket(sf::Packet& out)
 		return false;
 
 	out << uint32_t(mID);
+	out << uint32_t(mOwnerID);
 	out << mObject->GetObjectType()->GetModule()->GetName();
 	out << mObject->GetObjectType()->GetName();
 
@@ -149,6 +182,16 @@ bool NetworkedObject::injectPacket(sf::Packet& in)
 int NetworkedObject::getID() const
 {
 	return mID;
+}
+
+void NetworkedObject::setOwner(int id)
+{
+	mOwnerID = id;
+}
+
+void NetworkedObject::setLocalID(int id)
+{
+	localID = id;
 }
 
 void NetworkedObject::updateObject(asIScriptObject* newObj)

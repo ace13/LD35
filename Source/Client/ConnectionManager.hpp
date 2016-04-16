@@ -19,9 +19,16 @@ public:
 			*/
 			Type_Script = 0x0597,
 
+			/* Player information
+
+			<uint32> ID
+			*/
+			Type_Player = 0x14A3,
+
 			/* Object creation
 
 			<uint32> ID
+			<uint32> OwnerID
 			<string> Module
 			<string> Name
 			*/

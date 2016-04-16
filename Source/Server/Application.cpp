@@ -132,9 +132,16 @@ namespace
 		*/
 		PacketType_Script = 0x0597,
 
+		/* Player information
+
+		   <uint32> ID
+		*/
+		PacketType_Player = 0x14A3,
+
 		/* Object creation
 		
 		   <uint32> ID
+		   <uint32> OwnerID
 		   <string> Module
 		   <string> Name
 		*/
@@ -515,6 +522,12 @@ void Application::serverLoop()
 					std::cout << "Client " << client->getRemoteAddress().toString() << ":" << client->getRemotePort() << " connected." << std::endl;
 
 					auto cid = mConnections.addClient(std::move(client));
+
+					sf::Packet packet;
+					packet << uint16_t(PacketType_Player);
+					packet << cid;
+					mConnections.sendPacketTo(cid, packet);
+
 					auto count = mClientSM.getEngine()->GetModuleCount();
 					for (unsigned int i = 0; i < count; ++i)
 					{
@@ -535,6 +548,7 @@ void Application::serverLoop()
 					auto* obj = reinterpret_cast<asIScriptObject*>(man.getEngine()->CreateScriptObject(mod->GetObjectTypeByName("Player")));
 
 					mObjects[cid] = NetworkedObject(cid, obj);
+					mObjects[cid].setOwner(cid);
 
 					for (auto& obj : mObjects)
 					{
