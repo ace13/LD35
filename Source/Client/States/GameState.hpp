@@ -1,18 +1,17 @@
 #pragma once
 
-#include <Client/IState.hpp>
-#include <Client/ResourceManager.hpp>
+#pragma once
 
-#include <SFML/Graphics/Rect.hpp>
+#include <Client/IState.hpp>
 
 namespace States
 {
 
-class MenuState : public IState
+class GameState : public IState
 {
 public:
-	MenuState();
-	~MenuState();
+	GameState();
+	~GameState();
 
 	virtual void enterState();
 
@@ -22,9 +21,7 @@ public:
 	virtual void drawUI(sf::RenderTarget& rt);
 
 private:
-	ResourceManager::Font mFont;
 
-	sf::FloatRect mSPRect, mMPRect;
 };
 
 }

@@ -12,7 +12,33 @@ public:
 	{
 		enum EventTypes : uint16_t
 		{
-			Type_Script = 0x0597
+			/* Script data
+
+			<string> Module
+			<char[]> Bytecode
+			*/
+			Type_Script = 0x0597,
+
+			/* Object creation
+
+			<uint32> ID
+			<string> Module
+			<string> Name
+			*/
+			Type_Create = 0xC347,
+
+			/* Object update
+
+			Repeating:
+			<uint32> ID
+			<uint8> PropertyCount
+
+			Repeating:
+			<uint8> PropertyID
+			<uint8> Bytes
+			<char[Bytes]> Memory
+			*/
+			Type_Update = 0x6473
 		} Type;
 
 		sf::Packet Data;

@@ -2,6 +2,8 @@
 
 #include <SFML/System/Vector2.hpp>
 
+#include <cstdint>
+
 class ScriptManager;
 
 namespace Math
@@ -44,6 +46,9 @@ constexpr float PolarAngle(const T& v);
  */
 template<typename T>
 void SetPolarAngle(T& v, float ang);
+/** Calculate the Fowler-Null-Vo hash of a memory block.
+ */
+extern uint32_t HashMemory(const void* mem, size_t size);
 
 }
 

@@ -267,7 +267,6 @@ void Application::run()
 	ConnectionManager::Event netEv;
 
 	auto& window = mEngine.get<sf::RenderWindow>();
-	auto& server = mEngine.get<ServerContainer>();
 	auto& man = mEngine.get<ScriptManager>();
 	auto& connection = mEngine.get<ConnectionManager>();
 	auto& state = mEngine.get<StateManager>();
@@ -289,10 +288,6 @@ void Application::run()
 	Timestamp now = Clock::now(), nextGC = now + std::chrono::seconds(2);
 
 	auto oldframe = now;
-
-	server.init();
-	server.launch();
-	connection.connect(server.getPort(), sf::IpAddress::LocalHost);
 
 	while (window.isOpen())
 	{
@@ -393,10 +388,11 @@ void Application::run()
 		// -----------
 		// Run updates
 
+		window.setView(gameView);
+
 		while (tickTime >= tickLength)
 		{
 			// Run fixed updates
-			server.tick();
 			connection.tick();
 			state.tick(tickLength);
 			man.runHook<const Timespan&>("Tick", tickLength);
@@ -415,7 +411,6 @@ void Application::run()
 		window.clear();
 
 		// Draw things
-		window.setView(gameView);
 		state.draw(window);
 		man.runHook<sf::RenderTarget*>("Draw", &window);
 		gameView = window.getView();

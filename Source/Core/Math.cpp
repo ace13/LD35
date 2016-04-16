@@ -24,6 +24,19 @@ sf::Vector2f& sf::operator/=(sf::Vector2f& a, const sf::Vector2f& b)
 	return a;
 }
 
+uint32_t Math::HashMemory(const void* mem, size_t size)
+{
+	static const uint32_t base = 2166136261;
+	static const uint32_t prime = 16777619;
+
+	const char* cdata = static_cast<const char*>(mem);
+
+	uint32_t hash = base;
+	for (size_t i = 0; i < size; ++i)
+		hash = (hash ^ uint32_t(cdata[i])) * prime;
+	return hash;
+}
+
 void Math::registerScriptData(ScriptManager& man)
 {
 	man.addExtension("Math types", [](asIScriptEngine* eng) {

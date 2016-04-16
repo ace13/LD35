@@ -28,12 +28,14 @@ class Player
 
 #if CLIENT
 		Hooks::Add("Update", "update");
-		Hooks::Add("DrawUI", "draw");
+		Hooks::Add("Draw", "draw");
 
 		font = Resources::GetFont("arial.ttf");
 		ElementFade = 0;
+		secs = 0;
 #endif
-		InputValues = 0;
+
+		cl_InputValues = 0;
 	}
 
 	~Player()
@@ -43,7 +45,7 @@ class Player
 			Hooks::Remove("Tick", "tick");
 
 #if CLIENT
-			Hooks::Remove("DrawUI");
+			Hooks::Remove("Draw");
 			Hooks::Remove("Update");
 #endif
 		}
@@ -61,20 +63,19 @@ class Player
 		if (ElementFade > 0)
 			ElementFade = max(0, ElementFade - dt.Seconds);
 
-		InputValues = 0;
-
+		cl_InputValues = 0;
 		if (sf::Keyboard::IsPressed(sf::Keyboard::W))
-			InputValues |= Input::Input_Up;
+			cl_InputValues |= Input::Input_Up;
 		if (sf::Keyboard::IsPressed(sf::Keyboard::S))
-			InputValues |= Input::Input_Down;
+			cl_InputValues |= Input::Input_Down;
 		if (sf::Keyboard::IsPressed(sf::Keyboard::A))
-			InputValues |= Input::Input_Left;
+			cl_InputValues |= Input::Input_Left;
 		if (sf::Keyboard::IsPressed(sf::Keyboard::D))
-			InputValues |= Input::Input_Right;
+			cl_InputValues |= Input::Input_Right;
 		if (sf::Mouse::IsPressed(sf::Mouse::Left))
 		{
-			InputValues |= Input::Input_Fire;
-			Target = sf::Mouse::Position;
+			cl_InputValues |= Input::Input_Fire;
+			cl_Target = Rend.MapPixel(sf::Mouse::Position);
 		}
 
 		if (sf::Keyboard::IsPressed(sf::Keyboard::Num1))
@@ -121,32 +122,33 @@ class Player
 #endif
 
 		sf::Vec2 targetVelocity(
-			((InputValues & Input::Input_Right) == Input::Input_Right ? 1 : 0) - ((InputValues & Input::Input_Left) == Input::Input_Left ? 1 : 0),
-			((InputValues & Input::Input_Down) == Input::Input_Down ? 1 : 0) - ((InputValues & Input::Input_Up) == Input::Input_Up ? 1 : 0)
+			((cl_InputValues & Input::Input_Right) == Input::Input_Right ? 1 : 0) - ((cl_InputValues & Input::Input_Left) == Input::Input_Left ? 1 : 0),
+			((cl_InputValues & Input::Input_Down) == Input::Input_Down ? 1 : 0) - ((cl_InputValues & Input::Input_Up) == Input::Input_Up ? 1 : 0)
 		);
-		Velocity += (targetVelocity - Velocity) * dt.Seconds * 2;
-		Position += Velocity * 100 * dt.Seconds;
+		sv_Velocity += (targetVelocity - sv_Velocity) * dt.Seconds * 2;
+		sv_Position += sv_Velocity * 100 * dt.Seconds;
 	}
 
 #if CLIENT
 	void draw(sf::Renderer@ rend)
 	{
+		@Rend = rend;
 		sf::CircleShape player(32);
 
 		player.Origin = sf::Vec2(32,32);
-		player.Position = Position;
+		player.Position = sv_Position;
 
 		player.Scale(sf::Vec2(1 + sin(secs * 2) / 10, 1 + sin(secs * 2) / 10));
 
 		if (!(Element is null))
 			player.FillColor = Element.Color;
 
-		if ((InputValues & Input::Input_Fire) == Input::Input_Fire)
+		if ((cl_InputValues & Input::Input_Fire) == Input::Input_Fire)
 		{
 			sf::RectangleShape line(sf::Vec2(200, 1));
 			line.Origin = sf::Vec2(0, 0.5);
-			line.Position = Position;
-			line.Rotation = atan2(Target.Y - Position.Y, Target.X - Position.X) * RAD2DEG;
+			line.Position = sv_Position;
+			line.Rotation = atan2(cl_Target.Y - sv_Position.Y, cl_Target.X - sv_Position.X) * RAD2DEG;
 
 			if (!(Element is null))
 				line.FillColor = Element.Color;
@@ -161,18 +163,20 @@ class Player
 			sf::Text name(Element.Name);
 
 			name.SetFont(@font.Font);
-			name.Position = Position - sf::Vec2(0, 50);
+			name.Position = sv_Position - sf::Vec2(0, 50);
 			name.Origin = name.LocalBounds.Center;
 
 			rend.Draw(name);
 		}
 	}
 
+	sf::Renderer@ Rend;
 	float secs, ElementFade;
 	Resources::Font font;
 #endif
 
-	int InputValues;
-	sf::Vec2 Position, Velocity, Target;
+	int cl_InputValues;
+	sf::Vec2 sv_Position, sv_Velocity, cl_Target;
+
 	IElement@ Element;
 }

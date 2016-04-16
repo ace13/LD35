@@ -24,6 +24,19 @@ namespace
 		view.setSize(vec);
 		target->setView(view);
 	}
+
+	void mapPixelToCoord(asIScriptGeneric* gen)
+	{
+		sf::RenderTarget* target = reinterpret_cast<sf::RenderTarget*>(gen->GetObject());
+		const sf::Vector2f* pixel = reinterpret_cast<sf::Vector2f*>(gen->GetArgObject(0));
+		new (gen->GetAddressOfReturnLocation()) sf::Vector2f(target->mapPixelToCoords(sf::Vector2i(*pixel)));
+	}
+	void mapCoordToPixel(asIScriptGeneric* gen)
+	{
+		sf::RenderTarget* target = reinterpret_cast<sf::RenderTarget*>(gen->GetObject());
+		const sf::Vector2f* coord = reinterpret_cast<sf::Vector2f*>(gen->GetArgObject(0));
+		new (gen->GetAddressOfReturnLocation()) sf::Vector2f(target->mapCoordsToPixel(*coord));
+	}
 }
 
 void as::priv::RegRenderer(asIScriptEngine* eng)
@@ -38,6 +51,9 @@ void as::priv::RegRenderer(asIScriptEngine* eng)
 	AS_ASSERT(eng->RegisterObjectMethod("Renderer", "void set_Size(const Vec2&in)", asFUNCTION(setSize), asCALL_CDECL_OBJFIRST));
 	AS_ASSERT(eng->RegisterObjectMethod("Renderer", "const View& get_View() const", asMETHOD(sf::RenderTarget, getView), asCALL_THISCALL));
 	AS_ASSERT(eng->RegisterObjectMethod("Renderer", "void set_View(const View&in)", asMETHOD(sf::RenderTarget, setView), asCALL_THISCALL));
+
+	AS_ASSERT(eng->RegisterObjectMethod("Renderer", "Vec2 MapPixel(const Vec2&in)", asFUNCTION(mapPixelToCoord), asCALL_GENERIC));
+	AS_ASSERT(eng->RegisterObjectMethod("Renderer", "Vec2 MapCoord(const Vec2&in)", asFUNCTION(mapCoordToPixel), asCALL_GENERIC));
 
 	AS_ASSERT(eng->SetDefaultNamespace(""));
 }

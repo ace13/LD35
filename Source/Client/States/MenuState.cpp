@@ -1,4 +1,5 @@
 #include "MenuState.hpp"
+#include "GameState.hpp"
 
 #include <Client/StateManager.hpp>
 #include <Core/Engine.hpp>
@@ -31,7 +32,18 @@ void MenuState::update(const Timespan& dt)
 }
 void MenuState::tick(const Timespan& dt)
 {
+	if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
+	{
+		sf::Vector2f mousePos(sf::Mouse::getPosition(getSM().getEngine().get<sf::RenderWindow>()));
+		if (mSPRect.contains(mousePos))
+		{
+			getSM().pushState(new GameState());
+		}
+		else if (mMPRect.contains(mousePos))
+		{
 
+		}
+	}
 }
 void MenuState::draw(sf::RenderTarget& rt)
 {
@@ -57,8 +69,8 @@ void MenuState::drawUI(sf::RenderTarget& rt)
 	box.setOrigin(rect.width / 2 + 10, rect.height / 2 + 10);
 	label.setPosition(box.getPosition());
 
-	rect = box.getGlobalBounds();
-	if (rect.contains(mouse))
+	mSPRect = box.getGlobalBounds();
+	if (mSPRect.contains(mouse))
 		box.setFillColor(sf::Color(255, 255, 0, 128));
 
 	rt.draw(box);
@@ -74,8 +86,8 @@ void MenuState::drawUI(sf::RenderTarget& rt)
 	box.setOrigin(rect.width / 2 + 10, rect.height / 2 + 10);
 	label.setPosition(box.getPosition());
 
-	rect = box.getGlobalBounds();
-	if (rect.contains(mouse))
+	mMPRect = box.getGlobalBounds();
+	if (mMPRect.contains(mouse))
 		box.setFillColor(sf::Color(255, 255, 0, 128));
 
 	rt.draw(box);

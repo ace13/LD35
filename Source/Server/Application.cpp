@@ -125,7 +125,33 @@ namespace
 
 	enum EventTypes : uint16_t
 	{
-		PacketType_Script = 0x0597
+		/* Script data
+		  
+		   <string> Module
+		   <char[]> Bytecode
+		*/
+		PacketType_Script = 0x0597,
+
+		/* Object creation
+		
+		   <uint32> ID
+		   <string> Module
+		   <string> Name
+		*/
+		PacketType_Create = 0xC347,
+
+		/* Object update
+		
+		   Repeating:
+		   <uint32> ID
+		   <uint8> PropertyCount
+
+		   Repeating:
+		   <uint8> PropertyID
+		   <uint8> Bytes
+		   <char[Bytes]> Memory
+		*/
+		PacketType_Update = 0x6473
 	};
 }
 
