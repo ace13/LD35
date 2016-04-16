@@ -1,3 +1,5 @@
+#include "Elements.as"
+
 Player@ p;
 
 void OnLoad()
@@ -28,7 +30,8 @@ class Player
 		Hooks::Add("Update", "update");
 		Hooks::Add("DrawUI", "draw");
 
-//		font = Resources::GetFont("arial.ttf");
+		font = Resources::GetFont("arial.ttf");
+		ElementFade = 0;
 #endif
 		InputValues = 0;
 	}
@@ -47,9 +50,16 @@ class Player
 	}
 
 #if CLIENT
+	float max(float a, float b)
+	{
+		return (a < b ? b : a);
+	}
+
 	void update(const Timespan&in dt)
 	{
 		secs += dt.Seconds;
+		if (ElementFade > 0)
+			ElementFade = max(0, ElementFade - dt.Seconds);
 
 		InputValues = 0;
 
@@ -66,6 +76,37 @@ class Player
 			InputValues |= Input::Input_Fire;
 			Target = sf::Mouse::Position;
 		}
+
+		if (sf::Keyboard::IsPressed(sf::Keyboard::Num1))
+		{
+			@Element = Elements::Fire();
+			ElementFade = 1;
+		}
+		if (sf::Keyboard::IsPressed(sf::Keyboard::Num2))
+		{
+			@Element = Elements::Earth();
+			ElementFade = 1;
+		}
+		if (sf::Keyboard::IsPressed(sf::Keyboard::Num3))
+		{
+			@Element = Elements::Water();
+			ElementFade = 1;
+		}
+		if (sf::Keyboard::IsPressed(sf::Keyboard::Num4))
+		{
+			@Element = Elements::Air();
+			ElementFade = 1;
+		}
+		if (sf::Keyboard::IsPressed(sf::Keyboard::Num5))
+		{
+			@Element = Elements::Light();
+			ElementFade = 1;
+		}
+		if (sf::Keyboard::IsPressed(sf::Keyboard::Num6))
+		{
+			@Element = Elements::Darkness();
+			ElementFade = 1;
+		}
 	}
 #endif
 
@@ -78,6 +119,7 @@ class Player
 
 */
 #endif
+
 		sf::Vec2 targetVelocity(
 			((InputValues & Input::Input_Right) == Input::Input_Right ? 1 : 0) - ((InputValues & Input::Input_Left) == Input::Input_Left ? 1 : 0),
 			((InputValues & Input::Input_Down) == Input::Input_Down ? 1 : 0) - ((InputValues & Input::Input_Up) == Input::Input_Up ? 1 : 0)
@@ -96,7 +138,8 @@ class Player
 
 		player.Scale(sf::Vec2(1 + sin(secs * 2) / 10, 1 + sin(secs * 2) / 10));
 
-		rend.Draw(player);
+		if (!(Element is null))
+			player.FillColor = Element.Color;
 
 		if ((InputValues & Input::Input_Fire) == Input::Input_Fire)
 		{
@@ -105,13 +148,31 @@ class Player
 			line.Position = Position;
 			line.Rotation = atan2(Target.Y - Position.Y, Target.X - Position.X) * RAD2DEG;
 
+			if (!(Element is null))
+				line.FillColor = Element.Color;
+
 			rend.Draw(line);
+		}
+
+		rend.Draw(player);
+
+		if (ElementFade > 0)
+		{
+			sf::Text name(Element.Name);
+
+			name.SetFont(@font.Font);
+			name.Position = Position - sf::Vec2(0, 50);
+			name.Origin = name.LocalBounds.Center;
+
+			rend.Draw(name);
 		}
 	}
 
-	float secs;
+	float secs, ElementFade;
+	Resources::Font font;
 #endif
 
 	int InputValues;
 	sf::Vec2 Position, Velocity, Target;
+	IElement@ Element;
 }
