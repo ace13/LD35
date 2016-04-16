@@ -521,8 +521,19 @@ void CSerializedValue::SetType(int typeId)
 
 	asIObjectType *type = m_serializer->m_engine->GetObjectTypeById(typeId);
 
-	if( type )
-		m_typeName = type->GetName();
+	if (type)
+	{
+		if (type->GetTypeId() & asTYPEID_SCRIPTOBJECT)
+		{
+			std::string ns = type->GetNamespace();
+			if (!ns.empty())
+				ns += "::";
+
+			m_typeName = ns + type->GetName();
+		}
+		else
+			m_typeName = type->GetName();
+	}
 }
 
 asIObjectType *CSerializedValue::GetType()

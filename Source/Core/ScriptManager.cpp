@@ -38,6 +38,18 @@ namespace
 		std::cerr << "\x1b[0m";
 #endif
 	}
+
+	int loadInclude(const char *include, const char *from, CScriptBuilder *builder, void *userParam)
+	{
+		std::string file = from;
+		auto last = file.find_last_of('/');
+		if (last != std::string::npos)
+			file.erase(last + 1);
+		if (file[0] == '.')
+			file.erase(0, 2);
+
+		return builder->AddSectionFromFile((file + include).c_str());
+	}
 }
 
 
@@ -208,6 +220,7 @@ bool ScriptManager::loadFromMemory(const std::string& name, const void* data, si
 	{
 		static const char* scratchName = "!!ScratchSpace!!";
 		CScriptBuilder builder;
+		builder.SetIncludeCallback(loadInclude, this);
 
 		for (auto& def : mDefines)
 			builder.DefineWord(def.c_str());
