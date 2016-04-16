@@ -13,11 +13,13 @@ public:
 		UpdateTick = 1000 / 20
 	};
 
+	NetworkedObject();
 	NetworkedObject(int id, asIScriptObject* obj);
-	NetworkedObject(const NetworkedObject&) = delete;
+	NetworkedObject(const NetworkedObject&);
+	NetworkedObject(NetworkedObject&&);
 	~NetworkedObject();
 
-	NetworkedObject& operator=(const NetworkedObject&) = delete;
+	NetworkedObject& operator=(const NetworkedObject&);
 
 	void tick();
 	bool buildPacket(sf::Packet& out);

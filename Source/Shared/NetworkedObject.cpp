@@ -6,13 +6,35 @@
 
 #include <algorithm>
 
+NetworkedObject::NetworkedObject()
+	: mID(0)
+	, mObject(nullptr)
+	, mWeakRef(nullptr)
+{
+}
 NetworkedObject::NetworkedObject(int id, asIScriptObject* obj)
 	: mID(id)
-	, mObject(obj)
-	, mWeakRef(obj->GetWeakRefFlag())
+	, mObject(nullptr)
+	, mWeakRef(nullptr)
 {
-	mWeakRef->AddRef();
-	mObject->AddRef();
+	updateObject(obj);
+}
+NetworkedObject::NetworkedObject(const NetworkedObject& other)
+	: mID(other.mID)
+	, mObject(nullptr)
+	, mWeakRef(nullptr)
+{
+	updateObject(other.mObject);
+}
+NetworkedObject::NetworkedObject(NetworkedObject&& other)
+	: mID(std::move(other.mID))
+	, mObject(std::move(other.mObject))
+	, mWeakRef(std::move(other.mWeakRef))
+	, mTracked(std::move(other.mTracked))
+{
+	other.mObject = nullptr;
+	other.mWeakRef = nullptr;
+	other.mDirty.clear();
 }
 NetworkedObject::~NetworkedObject()
 {
@@ -23,6 +45,18 @@ NetworkedObject::~NetworkedObject()
 
 		mWeakRef->Release();
 	}
+}
+
+NetworkedObject& NetworkedObject::operator=(const NetworkedObject& other)
+{
+	if (this != &other)
+	{
+		mID = other.mID;
+
+		updateObject(other.mObject);
+	}
+
+	return *this;
 }
 
 void NetworkedObject::tick()
@@ -102,32 +136,44 @@ void NetworkedObject::updateObject(asIScriptObject* newObj)
 	}
 
 	mObject = newObj;
-	mObject->AddRef();
-	mWeakRef = mObject->GetWeakRefFlag();
-	mWeakRef->AddRef();
 	mTracked.clear();
+	mDirty.clear();
 
-	for (uint32_t i = 0; i < mObject->GetPropertyCount(); ++i)
+	if (mObject)
 	{
-		std::string name = mObject->GetPropertyName(i);
+		mObject->AddRef();
+		mWeakRef = mObject->GetWeakRefFlag();
+		mWeakRef->AddRef();
+
+		for (uint32_t i = 0; i < mObject->GetPropertyCount(); ++i)
+		{
+			std::string name = mObject->GetPropertyName(i);
 #if defined LD35_SERVER
-		if (name.substr(0, 3) == "sv_")
+			if (name.substr(0, 3) == "sv_")
 #elif defined LD35_CLIENT
-		if (name.substr(0, 3) == "cl_")
+			if (name.substr(0, 3) == "cl_")
 #else
 #error "Unknown source project"
 #endif
-		{
-			auto* addr = mObject->GetAddressOfProperty(i);
-			auto type = mObject->GetEngine()->GetObjectTypeById(mObject->GetPropertyTypeId(i));
-			uint32_t hash = Math::HashMemory(addr, type->GetSize());
+			{
+				auto* addr = mObject->GetAddressOfProperty(i);
+				auto type = mObject->GetEngine()->GetObjectTypeById(mObject->GetPropertyTypeId(i));
+				uint32_t hash = Math::HashMemory(addr, type->GetSize());
 
-			mTracked.push_back({
-				uint8_t(i),
-				type->GetSize(),
-				addr,
-				hash
-			});
+				mTracked.push_back({
+					uint8_t(i),
+					type->GetSize(),
+					addr,
+					hash
+				});
+			}
 		}
+
+		auto* man = reinterpret_cast<ScriptManager*>(mObject->GetEngine()->GetUserData(0x4547));
+		man->addChangeNotice(mObject, "NetworkedObject", std::bind1st(std::mem_fn(&NetworkedObject::updateObject), this));
+	}
+	else
+	{
+		mWeakRef = nullptr;
 	}
 }

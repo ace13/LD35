@@ -14,7 +14,7 @@ namespace Elements
 	shared class Earth : IElement
 	{
 		string get_Name() const { return "Earth"; }
-		sf::Color get_Color() const { return sf::Color(255,197,128); }
+		sf::Color get_Color() const { return sf::Color(255,196,96); }
 	}
 	shared class Water : IElement
 	{
@@ -24,7 +24,7 @@ namespace Elements
 	shared class Air : IElement
 	{
 		string get_Name() const { return "Air"; }
-		sf::Color get_Color() const { return sf::Color(255,255,0); }
+		sf::Color get_Color() const { return sf::Color(255,255,196); }
 	}
 
 	shared class Light : IElement

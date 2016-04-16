@@ -113,20 +113,12 @@ class Player
 
 	void tick(const Timespan&in dt)
 	{
-#if CLIENT
-/*
-		sf::Packet packet;
-		packet << InputValues;
-
-*/
-#endif
-
 		sf::Vec2 targetVelocity(
 			((cl_InputValues & Input::Input_Right) == Input::Input_Right ? 1 : 0) - ((cl_InputValues & Input::Input_Left) == Input::Input_Left ? 1 : 0),
 			((cl_InputValues & Input::Input_Down) == Input::Input_Down ? 1 : 0) - ((cl_InputValues & Input::Input_Up) == Input::Input_Up ? 1 : 0)
 		);
 		sv_Velocity += (targetVelocity - sv_Velocity) * dt.Seconds * 2;
-		sv_Position += sv_Velocity * 100 * dt.Seconds;
+		sv_Position += sv_Velocity * 250 * dt.Seconds;
 	}
 
 #if CLIENT

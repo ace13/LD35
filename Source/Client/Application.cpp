@@ -4,7 +4,7 @@
 #include "ServerContainer.hpp"
 #include "StateManager.hpp"
 
-#include "States/IntroState.hpp"
+#include "States/GameState.hpp"
 
 #include <Core/Math.hpp>
 #include <Core/Time.hpp>
@@ -236,24 +236,6 @@ void Application::init()
 
 	WriteConfigToFile(man.getEngine(), "ClientEngineConfig.txt");
 
-	/*
-	// Load scripts;
-	std::list<std::string> files;
-	FileWatcher::recurseDirectory(".", files, "*.as");
-
-	for (auto& entry : files)
-	{
-		if (entry.substr(entry.length() - 3) != ".as")
-			continue;
-
-		man.loadFromFile(entry);
-	}
-
-	auto& watch = mEngine.get<FileWatcher>();
-
-	watch.addSource(".", true);
-	*/
-
 	auto end = Clock::now();
 	std::cout << "Init took " << (end - beg) << std::endl;
 }
@@ -264,14 +246,11 @@ void Application::run()
 
 	sf::Event ev;
 	std::string modified;
-	ConnectionManager::Event netEv;
 
 	auto& window = mEngine.get<sf::RenderWindow>();
 	auto& man = mEngine.get<ScriptManager>();
-	auto& connection = mEngine.get<ConnectionManager>();
 	auto& state = mEngine.get<StateManager>();
 	state.setEngine(mEngine);
-	state.pushState(new States::IntroState());
 
 	window.create({ 800, 600 }, "LD35 Preparational Client");
 	sf::View uiView = window.getDefaultView(), gameView({}, { 0, 2500 });
@@ -282,6 +261,10 @@ void Application::run()
 
 		gameView.setSize(gameView.getSize().y * (size.x / size.y), gameView.getSize().y);
 	}
+
+	window.setView(gameView);
+	state.pushState(new States::GameState());
+	gameView = window.getView();
 
 	const Timespan tickLength = std::chrono::milliseconds(15);
 	Timespan tickTime(0);
@@ -296,41 +279,11 @@ void Application::run()
 		oldframe = now;
 
 		tickTime += dt;
-/*
-		if (watch.pollChange(modified) && man.isLoaded(modified))
-		{
-			std::cout << "Reloading " << modified << "..." << std::endl;
-			man.loadFromFile(modified);
-		}
-*/
 
 		// -------------
 		// Handle Events
 
-		if (connection.pollEvent(netEv))
-		{
-			switch (netEv.Type)
-			{
-			case ConnectionManager::Event::Type_Script:
-				{
-					std::string name;
-					netEv.Data >> name;
-
-					ScriptManager::BytecodeStore store;
-					do
-					{
-						uint8_t c;
-						netEv.Data >> c;
-						store.Write(&c, 1);
-					} while (netEv.Data);
-
-					std::cout << "Received script state for " << name << " from the server, integrating..." << std::endl;
-					if (!man.loadFromStream(name, store))
-						std::cout << "Integration of new script code failed." << std::endl;
-				}
-				break;
-			}
-		}
+		
 
 		if (window.pollEvent(ev))
 		{
@@ -393,7 +346,6 @@ void Application::run()
 		while (tickTime >= tickLength)
 		{
 			// Run fixed updates
-			connection.tick();
 			state.tick(tickLength);
 			man.runHook<const Timespan&>("Tick", tickLength);
 

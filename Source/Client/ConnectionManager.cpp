@@ -14,7 +14,7 @@ ConnectionManager::~ConnectionManager()
 
 void ConnectionManager::connect(uint16_t port, const sf::IpAddress& ip)
 {
-	mSocket.connect(ip, port);
+	mSocket.connect(ip, port, sf::seconds(5));
 }
 
 void ConnectionManager::tick()
@@ -34,6 +34,13 @@ void ConnectionManager::tick()
 			std::move(temp)
 		});
 	}
+}
+
+void ConnectionManager::send(sf::Packet& inpPacket)
+{
+	auto ret = sf::Socket::Partial;
+	while (ret == sf::Socket::Partial)
+		ret = mSocket.send(inpPacket);
 }
 
 bool ConnectionManager::hasEvent() const

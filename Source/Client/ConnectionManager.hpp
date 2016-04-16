@@ -52,6 +52,7 @@ public:
 
 	void connect(uint16_t port, const sf::IpAddress& ip);
 	void tick();
+	void send(sf::Packet& p);
 
 	bool hasEvent() const;
 	bool pollEvent(Event& out);
