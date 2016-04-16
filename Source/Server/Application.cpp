@@ -629,29 +629,3 @@ void Application::serverLoop()
 
 	mState = State_Stopped;
 }
-
-template<>
-int ScriptManager::setCTXArg<const std::string*>(asIScriptContext* ctx, uint32_t id, const std::string* arg)
-{
-	return ctx->SetArgObject(id, (std::string*)arg);
-}
-template<>
-int ScriptManager::setCTXArg<const Timespan*>(asIScriptContext* ctx, uint32_t id, const Timespan* arg)
-{
-	return ctx->SetArgObject(id, (Timespan*)arg);
-}
-template<>
-int ScriptManager::setCTXArg<const Timespan&>(asIScriptContext* ctx, uint32_t id, const Timespan& arg)
-{
-	return ctx->SetArgObject(id, const_cast<Timespan*>(&arg));
-}
-template<>
-int ScriptManager::setCTXArg<const sf::Vector2f&>(asIScriptContext* ctx, uint32_t id, const sf::Vector2f& arg)
-{
-	return ctx->SetArgObject(id, const_cast<sf::Vector2f*>(&arg));
-}
-template<>
-int ScriptManager::setCTXArg<const sf::Vector3f&>(asIScriptContext* ctx, uint32_t id, const sf::Vector3f& arg)
-{
-	return ctx->SetArgObject(id, const_cast<sf::Vector3f*>(&arg));
-}

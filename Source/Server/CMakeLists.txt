@@ -8,6 +8,7 @@ SET(SOURCES
 	Application.cpp
 	ConnectionManager.cpp
 	../Shared/NetworkedObject.cpp
+	Statics.cpp
 
 	main.cpp
 )

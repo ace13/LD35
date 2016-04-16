@@ -1,7 +1,8 @@
-LD35
+Elements SHMUP
 =====
 
-A repository for my Ludum Dare 35 entry.
+In this repository is the code for my Ludum Dare 35 project, a top-down twin stick shooter involving the shifting of elements to defeat your enemies.
+
 
 Dependencies
 ============

@@ -5,10 +5,9 @@ SET(HEADERS
 	ResourceManager.hpp
 	ResourceManager.inl
 	ServerContainer.hpp
-	
-	IState.hpp
 	StateManager.hpp
 
+	IState.hpp
 	States/GameState.hpp
 	States/IntroState.hpp
 	States/MenuState.hpp
@@ -20,8 +19,8 @@ SET(SOURCES
 	../Shared/NetworkedObject.cpp
 	ResourceManager.cpp
 	ServerContainer.cpp
-	
 	StateManager.cpp
+	Statics.cpp
 
 	States/GameState.cpp
 	States/IntroState.cpp

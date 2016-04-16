@@ -8,6 +8,7 @@ namespace Input
 		Input_Down  = 1 << 1,
 		Input_Left  = 1 << 2,
 		Input_Right = 1 << 3,
+
 		Input_Fire  = 1 << 4
 	}
 }
